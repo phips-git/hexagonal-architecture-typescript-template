@@ -1,0 +1,13 @@
+{
+  "name": "@hexagonal-ts-template/email",
+  "private": true,
+  "scripts": {
+    "lint": "eslint .",
+    "test": "tsx --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@hexagonal-ts-template/eslint-config": "*",
+    "@hexagonal-ts-template/typescript-config": "*"
+  }
+}

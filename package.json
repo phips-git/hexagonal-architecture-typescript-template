@@ -1,0 +1,24 @@
+{
+  "name": "hexagonal-ts-template",
+  "private": true,
+  "author": "Philipp Teßner-Müller",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "clean": "git clean -xdf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\" && sort-package-json \"**/package.json\"",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "eslint": "10.11.0",
+    "prettier": "3.9.8",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "sort-package-json": "4.0.0",
+    "tsx": "4.23.15",
+    "typescript": "^7"
+  }
+}

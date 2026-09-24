@@ -1,0 +1,8 @@
+{
+  "name": "@hexagonal-ts-template/typescript-config",
+  "private": true,
+  "devDependencies": {
+    "@tsconfig/strictest": "2.0.8",
+    "@types/node": "^24"
+  }
+}
