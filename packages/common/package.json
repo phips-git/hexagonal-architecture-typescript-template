@@ -3,7 +3,8 @@
   "private": true,
   "exports": {
     "./application": "./src/application.export.ts",
-    "./domain": "./src/domain.export.ts"
+    "./domain": "./src/domain.export.ts",
+    "./infrastructure": "./src/infrastructure.export.ts"
   },
   "scripts": {
     "lint": "eslint --max-warnings 0 --fix",

@@ -1,7 +1,8 @@
 {
-  "name": "@hexagonal-ts-template/email",
+  "name": "@hexagonal-ts-template/task-management",
   "private": true,
   "exports": {
+    "./application": "./src/application.export.ts",
     "./domain": "./src/domain.export.ts",
     "./infrastructure": "./src/infrastructure.export.ts"
   },
@@ -9,6 +10,10 @@
     "lint": "eslint --max-warnings 0 --fix",
     "test": "tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hexagonal-ts-template/common": "*",
+    "drizzle-orm": "0.45.3"
   },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",

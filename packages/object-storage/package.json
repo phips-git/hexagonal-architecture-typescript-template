@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@hexagonal-ts-template/common": "*",
-    "@aws-sdk/client-s3": "^3.1144.0",
-    "@aws-sdk/s3-request-presigner": "^3.1144.0"
+    "@aws-sdk/client-s3": "3.1144.0",
+    "@aws-sdk/s3-request-presigner": "3.1144.0"
   },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",
