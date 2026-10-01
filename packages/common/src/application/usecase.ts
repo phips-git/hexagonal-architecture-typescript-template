@@ -1,29 +1,14 @@
 import { isDomainError } from '../domain/models';
-import type { LoggerPort, UsecaseExecutionDependencies } from './ports';
+import type { IdGeneratorPort } from './ports/id-generator.port';
+import type { LogContext, LoggerPort } from './ports/logger.port';
+
+export interface UsecaseExecutionDependencies {
+  generateId: IdGeneratorPort;
+  loggerFactory: (loggerName: string) => LoggerPort;
+}
 
 export abstract class Usecase<TInput = void, TOutput = void> {
-  private static executionDependencies: UsecaseExecutionDependencies | null =
-    null;
-
-  static configureExecutionDependencies(
-    executionDependencies: UsecaseExecutionDependencies
-  ): void {
-    Usecase.executionDependencies = executionDependencies;
-  }
-
-  static resetExecutionDependencies(): void {
-    Usecase.executionDependencies = null;
-  }
-
-  static getExecutionDependencies(): UsecaseExecutionDependencies {
-    if (!Usecase.executionDependencies) {
-      throw new Error(
-        'Usecase execution dependencies have not been configured. Call Usecase.configureExecutionDependencies() during app bootstrap.'
-      );
-    }
-
-    return Usecase.executionDependencies;
-  }
+  constructor(protected readonly dependencies: UsecaseExecutionDependencies) {}
 
   protected abstract executeInternal(
     input: TInput,
@@ -31,49 +16,51 @@ export abstract class Usecase<TInput = void, TOutput = void> {
   ): Promise<TOutput>;
 
   async execute(
-    input: TInput,
-    executionContext?: Record<string, unknown>
+    input: Readonly<TInput>,
+    executionContext?: Readonly<Record<string, unknown>>
   ): Promise<TOutput> {
-    const executionDependencies = Usecase.getExecutionDependencies();
     const startTime = Date.now();
-    const executionId = executionDependencies.idGenerator.generate();
-    const executionLogger = executionDependencies.loggerFactory(
-      this.constructor.name
-    );
+    const executionId = this.dependencies.generateId();
+    const logger = this.dependencies.loggerFactory(this.constructor.name);
 
     try {
-      const result = await this.executeInternal(input, executionLogger);
-      executionLogger.info('Execution completed', {
-        executionContext: { ...executionContext, executionId },
-        duration: `${(Date.now() - startTime).toFixed(2)}ms`
+      const result = await this.executeInternal(input, logger);
+
+      logger.info('Execution completed', {
+        executionId,
+        durationMs: Date.now() - startTime,
+        ...executionContext
       });
 
       return result;
     } catch (error) {
       const isDomainErrorInstance = isDomainError(error);
-      const logLevelByError = isDomainErrorInstance ? error.logLevel : 'error';
+      const logLevel = isDomainErrorInstance ? error.logLevel : 'error';
       const message = isDomainErrorInstance
-        ? 'Failed'
-        : 'Failed with unexpected error';
-      const context = {
-        executionContext: { ...executionContext, executionId },
-        duration: `${(Date.now() - startTime).toFixed(2)}ms`,
+        ? 'Execution failed'
+        : 'Unexpected error';
+
+      const logContext: LogContext = {
+        executionId,
+        durationMs: Date.now() - startTime,
+        ...(isDomainErrorInstance &&
+          error.context && { errorContext: error.context }),
+        ...(executionContext && { executionContext }),
         error
       };
 
-      switch (logLevelByError) {
+      switch (logLevel) {
         case 'warn':
-          executionLogger.warn(message, context);
+          logger.warn(message, logContext);
           break;
         case 'error':
-          executionLogger.error(message, context);
+          logger.error(message, logContext);
           break;
         default:
-          executionLogger.info(message, context);
+          logger.info(message, logContext);
           break;
       }
 
-      executionDependencies.markErrorAsLogged(error);
       throw error;
     }
   }

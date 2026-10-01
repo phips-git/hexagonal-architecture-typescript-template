@@ -1,3 +1,1 @@
-export interface IdGeneratorPort {
-  generate<T = string>(): T;
-}
+export type IdGeneratorPort = <T = string>(length?: number) => T;

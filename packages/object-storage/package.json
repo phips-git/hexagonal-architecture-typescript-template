@@ -1,14 +1,19 @@
 {
-  "name": "@hexagonal-ts-template/common",
+  "name": "@hexagonal-ts-template/object-storage",
   "private": true,
   "exports": {
-    "./application": "./src/application.export.ts",
-    "./domain": "./src/domain.export.ts"
+    "./domain": "./src/domain.export.ts",
+    "./infrastructure": "./src/infrastructure.export.ts"
   },
   "scripts": {
     "lint": "eslint --max-warnings 0 --fix",
     "test": "tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hexagonal-ts-template/common": "*",
+    "@aws-sdk/client-s3": "^3.1144.0",
+    "@aws-sdk/s3-request-presigner": "^3.1144.0"
   },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",

@@ -2,7 +2,7 @@
   "name": "@hexagonal-ts-template/email",
   "private": true,
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint --max-warnings 0 --fix",
     "test": "tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },

@@ -5,6 +5,54 @@
       "last_modified": "2026-09-22T05:33:51Z",
       "resolved": "github:NixOS/nixpkgs/b6c98e9e6633ee64753b594ff4a5febf0367fc00?lastModified=1790055231&narHash=sha256-QpXotokGh5eeMG1Njiuh27oP0rK6t5%2BcMp7ymXSs7mc%3D"
     },
+    "nest-cli@11.0.18": {
+      "last_modified": "2026-09-05T11:43:56Z",
+      "resolved": "github:NixOS/nixpkgs/0af3d1402dec3fc7e93635e511d1f7428c89cebf#nest-cli",
+      "source": "devbox-search",
+      "version": "11.0.18",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/1gnjc4sww4ijqpk0zhqq5dvfan8hb3sn-nest-cli-11.0.18",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/1gnjc4sww4ijqpk0zhqq5dvfan8hb3sn-nest-cli-11.0.18"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/a3jaf3hlqiz4z6rc22n1w7x2d7cjjlbc-nest-cli-11.0.18",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/a3jaf3hlqiz4z6rc22n1w7x2d7cjjlbc-nest-cli-11.0.18"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/scikxgmjcqbpxql3yjpwsf2ii0nzvb2i-nest-cli-11.0.18",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/scikxgmjcqbpxql3yjpwsf2ii0nzvb2i-nest-cli-11.0.18"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/cvf6g1r5a9grinci2qmi372zv299jj02-nest-cli-11.0.18",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/cvf6g1r5a9grinci2qmi372zv299jj02-nest-cli-11.0.18"
+        }
+      }
+    },
     "nodejs@24": {
       "last_modified": "2025-12-27T12:56:01Z",
       "plugin_version": "0.0.5",
