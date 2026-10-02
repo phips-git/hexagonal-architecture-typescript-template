@@ -1,3 +1,5 @@
+import type { LogLevel } from './logger.model';
+
 type DomainErrorOptions = ErrorOptions & {
   context?: Record<string, unknown>;
 };
