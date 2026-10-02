@@ -1,2 +1,45 @@
-node_modules
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Tests
+coverage/
+.nyc_output/
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+.project
+.settings/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Runtime data
+pids/
+*.pid
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# SAM
+.awesome/
+.template.yaml
+
+# Temp directories
+.temp/
+.tmp/
