@@ -2,22 +2,24 @@
   "name": "@hexagonal-ts-template/aws-lambda",
   "private": true,
   "scripts": {
-    "build": "esbuild 'src/lambda/*.ts' --platform=node --format=cjs --bundle --external:aws-sdk --external:drizzle-orm --external:sqlite3 --external:@hexagonal-ts-template/common --external:@hexagonal-ts-template/task-management --main-fields=main:default,module --target=node20 --outdir=dist",
-    "dev": "docker run -d -p 4566:4566 -p 3000:3000 --name localstack localstack/localstack:3.0",
+    "build": "esbuild 'src/lambda/*.ts' --platform=node --format=cjs --bundle --external:aws-sdk --external:drizzle-orm --external:sqlite3 --external:@hexagonal-ts-template/common --external:@hexagonal-ts-template/task-management --main-fields=main:default,module --target=node22 --outdir=dist",
+    "dev": "npm run db:init && docker run -d -p 4566:4566 -p 3000:3000 --name localstack localstack/localstack:3.0",
+    "db:init": "tsx src/scripts/init-db.ts",
     "dev:stop": "docker stop localstack",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hexagonal-ts-template/common": "*",
     "@hexagonal-ts-template/task-management": "*",
-    "aws-lambda": "^1.0.7",
+    "aws-lambda": "1.0.7",
     "nanoid": "6.0.1"
   },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",
     "@hexagonal-ts-template/typescript-config": "*",
-    "@types/aws-lambda": "^8.10.150",
-    "esbuild": "^0.25.5",
+    "@types/aws-lambda": "8.10.164",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
     "typescript": "^7"
   }
 }

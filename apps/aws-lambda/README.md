@@ -1,6 +1,6 @@
 # AWS Lambda - Task Management
 
-A minimal AWS Lambda implementation of task-management usecases following hexagonal architecture.
+A minimal AWS Lambda implementation of task-management usecases following hexagonal architecture. This app exposes CRUD operations for projects and tasks via API Gateway.
 
 ## Architecture
 
@@ -13,50 +13,16 @@ API Gateway → Lambda Functions → Use Cases → SQLite
 ```
 src/
 └── lambda/                    # Individual Lambda functions
-    ├── create-project.ts      # Uses: CreateProjectUsecase
-    ├── create-task.ts         # Uses: CreateTaskUsecase
-    ├── list-tasks.ts          # Uses: ListTasksUsecase
-    ├── update-project.ts      # Uses: UpdateProjectUsecase
-    ├── update-task.ts         # Uses: UpdateTaskUsecase
-    ├── delete-project.ts      # Uses: DeleteProjectUsecase
-    └── delete-task.ts         # Uses: DeleteTaskUsecase
+    ├── create-project.ts
+    ├── create-task.ts
+    ├── list-tasks.ts
+    ├── update-project.ts
+    ├── update-task.ts
+    ├── delete-project.ts
+    └── delete-task.ts
 
 package.json                   # Dependencies & scripts
 README.md
-```
-
-## Implementation
-
-Each Lambda function composes its usecase **once** at module level, reusing it across all invocations. Transactions are handled by the usecase itself via `UnitOfWorkPort.withTransaction()`.
-
-```typescript
-// Composed once at module level
-const projectPersistence = new SqliteProjectPersistencePort();
-const logger = createConsoleLogger('CreateProjectUsecase');
-
-const createProjectUsecase = new CreateProjectUsecase(
-  { generateId: () => require('uuid').v4(), loggerFactory: () => logger },
-  projectPersistence,
-  { withTransaction: async (work) => work() } // No-op for single-operation usecases
-);
-
-// Handler reuses the composed usecase
-export const handler = async (event, context) => {
-  await createProjectUsecase.execute(input);
-};
-```
-
-For usecases that need transactions (e.g., `CreateTaskUsecase`), the task-management package wraps multiple persistence operations in a transaction:
-
-```typescript
-const taskId = await this.unitOfWork.withTransaction(async () => {
-  const { id } = await this.taskPersistence.create(creationRecord);
-  await this.projectStatsPersistence.incrementTaskCount(
-    validatedProjectId,
-    new Date()
-  );
-  return id;
-});
 ```
 
 ## Quick Start
@@ -65,24 +31,27 @@ const taskId = await this.unitOfWork.withTransaction(async () => {
 # Install dependencies
 npm install
 
-# Build
+# Initialize the database (required before running dev)
+npm run db:init
+
+# Typecheck
+npm run typecheck
+
+# Build for deployment
 npm run build
 ```
 
-## Deploy
+## Deployment
+
+Build the Lambda functions:
 
 ```bash
-# Build for all functions
 npm run build
-
-# Deploy all Lambda functions
-for func in create-project create-task list-tasks update-project update-task delete-project delete-task; do
-  zip -r Lambda.zip dist/
-  aws lambda update-function-code \
-    --function-name $func \
-    --zip-file fileb://Lambda.zip
-done
 ```
+
+This bundles all Lambda functions into a single `dist/` directory. Each function is bundled as CommonJS (CJS) compatible with Node.js 22.x runtime.
+
+> **Note**: Use AWS SAM, CDK, or Serverless Framework for proper infrastructure provisioning (API Gateway, Lambda functions, IAM roles, and database connectivity).
 
 ## API Endpoints
 
@@ -96,22 +65,15 @@ done
 | DELETE | `/projects/{id}`                       | delete-project |
 | DELETE | `/projects/{projectId}/tasks/{taskId}` | delete-task    |
 
-## Technology Stack
-
-| Component   | Technology              |
-| ----------- | ----------------------- |
-| Runtime     | Node.js 20.x            |
-| Build       | esbuild                 |
-| Database    | SQLite                  |
-| Logger      | ConsoleLoggerAdapter    |
-| Persistence | Task-management package |
-
 ## Scripts
 
-| Command             | Description            |
-| ------------------- | ---------------------- |
-| `npm run build`     | Build Lambda functions |
-| `npm run typecheck` | TypeScript check       |
+| Command             | Description                           |
+| ------------------- | ------------------------------------- |
+| `npm run build`     | Build Lambda functions                |
+| `npm run db:init`   | Initialize the database schema        |
+| `npm run typecheck` | TypeScript check                      |
+| `npm run dev`       | Start LocalStack (runs db:init first) |
+| `npm run dev:stop`  | Stop LocalStack                       |
 
 ## License
 
