@@ -1,21 +1,22 @@
 import type {
   Project,
-  ProjectCreationProperties,
+  ProjectCreationRecord,
+  ProjectId,
   ProjectReference,
-  ProjectUpdateProperties
+  ProjectUpdateRecord
 } from '../models';
 
 export interface ProjectPersistencePort {
-  create(creationProperties: ProjectCreationProperties): Promise<Project>;
+  create(creationRecord: ProjectCreationRecord): Promise<Project>;
 
-  findReference(projectId: string): Promise<ProjectReference | null>;
+  findReference(projectId: ProjectId): Promise<ProjectReference | null>;
 
-  findById(projectId: string): Promise<Project | null>;
+  findById(projectId: ProjectId): Promise<Project | null>;
 
   update(
-    projectId: string,
-    updateProperties: ProjectUpdateProperties
+    projectId: ProjectId,
+    updateRecord: ProjectUpdateRecord
   ): Promise<Project>;
 
-  remove(projectId: string): Promise<boolean>;
+  remove(projectId: ProjectId): Promise<void>;
 }

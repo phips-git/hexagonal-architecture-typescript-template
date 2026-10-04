@@ -1,3 +1,5 @@
+import { createEnumValidator } from '@hexagonal-ts-template/common/domain';
+
 export const TaskStatus = {
   PENDING: 'pending',
   IN_PROGRESS: 'in_progress',
@@ -6,3 +8,5 @@ export const TaskStatus = {
 } as const;
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
+
+export const isValidTaskStatus = createEnumValidator(TaskStatus);

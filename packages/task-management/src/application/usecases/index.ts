@@ -5,4 +5,3 @@ export * from './delete-task.usecase';
 export * from './list-tasks.usecase';
 export * from './update-project.usecase';
 export * from './update-task.usecase';
-

@@ -1,147 +1,193 @@
 import { ValidationError } from '@hexagonal-ts-template/common/domain';
 import {
+  isValidTaskPriority,
+  isValidTaskStatus,
   TaskPriority,
   TaskStatus,
   type TaskCreationProperties,
   type TaskId,
-  type TaskUpdateProperties
+  type TaskUpdateProperties,
+  type ValidTaskCreationProperties,
+  type ValidTaskUpdateProperties
 } from '../models';
 
-export function validateTaskCreationProperties({
-  title,
-  description,
-  priority,
-  assignedTo
-}: Readonly<TaskCreationProperties>): void {
-  validateTaskTitle(title);
-
-  if (description) {
-    validateTaskDescription(description);
+export function validateTaskId(taskId: TaskId): asserts taskId is TaskId {
+  if (typeof taskId !== 'string') {
+    throw new ValidationError('Task id must be a string', {
+      context: { taskId }
+    });
   }
 
-  validateTaskPriority(priority);
+  if (taskId.length === 0) {
+    throw new ValidationError('Task id must not be empty', {
+      context: { taskId }
+    });
+  }
 
-  if (assignedTo) {
-    validateTaskAssignedTo(assignedTo);
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(taskId)) {
+    throw new ValidationError('Invalid task id format', {
+      context: { taskId }
+    });
   }
 }
 
+export function validateTaskCreationProperties(
+  creationProperties: Readonly<TaskCreationProperties>
+): asserts creationProperties is ValidTaskCreationProperties {
+  validateTaskTitle(creationProperties.title);
+
+  validateTaskDescription(creationProperties.description);
+
+  validateTaskPriority(creationProperties.priority);
+
+  validateTaskAssignedTo(creationProperties.assignedTo);
+
+  validateTaskDueDate(creationProperties.dueDate);
+}
+
 export function validateTaskUpdateProperties(
-  {
-    title,
-    description,
-    status,
-    priority,
-    assignedTo,
-    completionNotes
-  }: Readonly<TaskUpdateProperties>,
-  currentStatus?: TaskStatus
-): void {
-  if (title) {
-    validateTaskTitle(title);
+  updateProperties: Readonly<TaskUpdateProperties>,
+  currentStatus: TaskStatus
+): asserts updateProperties is ValidTaskUpdateProperties {
+  if (updateProperties.title !== undefined) {
+    validateTaskTitle(updateProperties.title);
   }
 
-  if (description) {
-    validateTaskDescription(description);
+  if (updateProperties.description !== undefined) {
+    validateTaskDescription(updateProperties.description);
   }
 
-  if (status) {
-    validateTaskStatus(status, currentStatus);
+  if (updateProperties.status !== undefined) {
+    validateTaskStatus(updateProperties.status, currentStatus);
   }
 
-  if (priority) {
-    validateTaskPriority(priority);
+  if (updateProperties.priority !== undefined) {
+    validateTaskPriority(updateProperties.priority);
   }
 
-  if (assignedTo) {
-    validateTaskAssignedTo(assignedTo);
+  if (updateProperties.assignedTo !== undefined) {
+    validateTaskAssignedTo(updateProperties.assignedTo);
   }
 
-  if (completionNotes) {
-    validateCompletionNotes(completionNotes);
+  if (updateProperties.dueDate !== undefined) {
+    validateTaskDueDate(updateProperties.dueDate);
+  }
+}
+
+function validateTaskTitle(taskTitle: string): asserts taskTitle is string {
+  if (typeof taskTitle !== 'string') {
+    throw new ValidationError('Task title must be a string', {
+      context: { taskTitle }
+    });
+  }
+
+  if (taskTitle.length === 0) {
+    throw new ValidationError('Task title must not be empty', {
+      context: { taskTitle }
+    });
+  }
+
+  if (taskTitle.length > 200) {
+    throw new ValidationError('Task title must be less than 200 characters', {
+      context: { taskTitle }
+    });
+  }
+}
+
+function validateTaskDescription(
+  taskDescription: string | null
+): asserts taskDescription is string | null {
+  if (taskDescription === null) {
+    return;
+  }
+
+  if (typeof taskDescription !== 'string') {
+    throw new ValidationError('Task description must be a string', {
+      context: { taskDescription }
+    });
+  }
+
+  if (taskDescription.length === 0) {
+    throw new ValidationError('Task description must not be empty', {
+      context: { taskDescription }
+    });
+  }
+
+  if (taskDescription.length > 500) {
+    throw new ValidationError(
+      'Task description must be less than 500 characters',
+      { context: { taskDescription } }
+    );
   }
 }
 
 function validateTaskStatus(
-  status: TaskStatus,
-  currentStatus?: TaskStatus
-): TaskStatus {
-  const validStatuses = Object.values(TaskStatus);
-  if (!validStatuses.includes(status)) {
-    throw new ValidationError('Invalid status');
+  targetTaskStatus: TaskStatus,
+  currentTaskStatus: TaskStatus
+): asserts targetTaskStatus is TaskStatus {
+  if (!isValidTaskStatus(targetTaskStatus)) {
+    throw new ValidationError('Invalid target task status', {
+      context: { targetTaskStatus }
+    });
   }
 
-  if (currentStatus && status === currentStatus) {
-    throw new ValidationError('Status must be different from current status');
+  if (targetTaskStatus === currentTaskStatus) {
+    throw new ValidationError(
+      'Task status must be different from current status',
+      { context: { targetTaskStatus, currentTaskStatus } }
+    );
   }
-
-  return status;
 }
 
-function validateTaskPriority(priority: TaskPriority): TaskPriority {
-  const validPriorities = Object.values(TaskPriority);
-  if (!validPriorities.includes(priority)) {
-    throw new ValidationError('Invalid priority');
+function validateTaskPriority(
+  taskPriority: TaskPriority
+): asserts taskPriority is TaskPriority {
+  if (!isValidTaskPriority(taskPriority)) {
+    throw new ValidationError('Invalid task priority', {
+      context: { taskPriority }
+    });
   }
-
-  return priority;
 }
 
-function validateTaskAssignedTo(assignedTo: string): string {
-  if (assignedTo.length > 100) {
-    throw new ValidationError('Assigned to must be less than 100 characters');
+function validateTaskAssignedTo(
+  taskAssignedTo: string | null
+): asserts taskAssignedTo is string | null {
+  if (taskAssignedTo === null) {
+    return;
   }
 
-  return assignedTo.trim();
+  if (typeof taskAssignedTo !== 'string') {
+    throw new ValidationError('Task assigned value must not be a string', {
+      context: { taskAssignedTo }
+    });
+  }
+
+  if (taskAssignedTo.length === 0) {
+    throw new ValidationError('Task assigned value must not be empty', {
+      context: { taskAssignedTo }
+    });
+  }
+
+  if (taskAssignedTo.length > 100) {
+    throw new ValidationError(
+      'Task assigned value must be less than 100 characters',
+      { context: { taskAssignedTo } }
+    );
+  }
 }
 
-export function validateTaskId(id: string): TaskId {
-  const validated = id;
-
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-  if (!uuidRegex.test(validated)) {
-    throw new ValidationError('Invalid TaskId format');
+function validateTaskDueDate(
+  taskDueDate: Date | null
+): asserts taskDueDate is Date | null {
+  if (taskDueDate === null) {
+    return;
   }
 
-  return validated as TaskId;
-}
-
-export function validateTaskTitle(title: string): string {
-  if (!title || title.trim().length === 0) {
-    throw new Error('Title is required');
+  if (!(taskDueDate instanceof Date) || isNaN(taskDueDate.getTime())) {
+    throw new ValidationError('Task due date must not be a date object', {
+      context: { taskDueDate }
+    });
   }
-
-  if (title.length > 200) {
-    throw new Error('Title must be less than 200 characters');
-  }
-
-  return title.trim();
-}
-
-export function validateTaskDescription(
-  description: string | undefined
-): string | undefined {
-  if (description === undefined) {
-    return undefined;
-  }
-
-  if (description.length > 1000) {
-    throw new Error('Description must be less than 1000 characters');
-  }
-
-  return description.trim() || undefined;
-}
-
-export function validateCompletionNotes(notes: string): string {
-  if (!notes || notes.trim().length === 0) {
-    throw new Error('Completion notes are required when completing a task');
-  }
-
-  if (notes.length > 2000) {
-    throw new Error('Completion notes must be less than 2000 characters');
-  }
-
-  return notes.trim();
 }

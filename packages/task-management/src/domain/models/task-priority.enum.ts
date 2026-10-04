@@ -1,3 +1,5 @@
+import { createEnumValidator } from '@hexagonal-ts-template/common/domain';
+
 export const TaskPriority = {
   LOW: 'low',
   MEDIUM: 'medium',
@@ -6,3 +8,5 @@ export const TaskPriority = {
 } as const;
 
 export type TaskPriority = (typeof TaskPriority)[keyof typeof TaskPriority];
+
+export const isValidTaskPriority = createEnumValidator(TaskPriority);

@@ -1,28 +1,30 @@
 import type {
+  ProjectId,
   Task,
-  TaskCreationProperties,
+  TaskCreationRecord,
+  TaskId,
   TaskListItem,
   TaskReference,
-  TaskUpdateProperties
+  TaskUpdateRecord
 } from '../models';
 
 export interface TaskPersistencePort {
-  create(creationProperties: TaskCreationProperties): Promise<Task>;
+  create(creationRecord: TaskCreationRecord): Promise<Task>;
 
   findReference(
-    taskId: string,
-    projectId: string
+    projectId: ProjectId,
+    taskId: TaskId
   ): Promise<TaskReference | null>;
 
-  findById(taskId: string, projectId: string): Promise<Task | null>;
+  findById(projectId: ProjectId, taskId: TaskId): Promise<Task | null>;
 
-  findAllByProject(projectId: string): Promise<TaskListItem[]>;
+  findAllByProject(projectId: ProjectId): Promise<TaskListItem[]>;
 
   update(
-    taskId: string,
-    projectId: string,
-    updateProperties: TaskUpdateProperties
+    projectId: ProjectId,
+    taskId: TaskId,
+    updateRecord: TaskUpdateRecord
   ): Promise<Task>;
 
-  remove(taskId: string, projectId: string): Promise<boolean>;
+  remove(projectId: ProjectId, taskId: TaskId): Promise<void>;
 }

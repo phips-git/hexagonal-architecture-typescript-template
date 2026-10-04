@@ -1,11 +1,11 @@
 import {
   Usecase,
   type LoggerPort,
-  type UnitOfWorkPort,
   type UsecaseExecutionDependencies
 } from '@hexagonal-ts-template/common/application';
 import type {
   ProjectCreationProperties,
+  ProjectId,
   TaskManagementAuthorizationContext
 } from '../../domain/models';
 import { ensureCanCreateProject } from '../../domain/policies';
@@ -19,7 +19,7 @@ export interface CreateProjectInput {
 }
 
 export interface CreateProjectOutput {
-  readonly projectId: string;
+  readonly projectId: ProjectId;
 }
 
 export class CreateProjectUsecase extends Usecase<
@@ -28,8 +28,7 @@ export class CreateProjectUsecase extends Usecase<
 > {
   constructor(
     dependencies: UsecaseExecutionDependencies,
-    private readonly projectPersistence: ProjectPersistencePort,
-    private readonly unitOfWork: UnitOfWorkPort
+    private readonly projectPersistence: ProjectPersistencePort
   ) {
     super(dependencies);
   }
@@ -47,11 +46,8 @@ export class CreateProjectUsecase extends Usecase<
       creationProperties
     );
 
-    const projectId = await this.unitOfWork.withTransaction(async () => {
-      const { id } = await this.projectPersistence.create(creationRecord);
-
-      return id;
-    });
+    const { id: projectId } =
+      await this.projectPersistence.create(creationRecord);
 
     logger.info('Project created', { projectId });
 

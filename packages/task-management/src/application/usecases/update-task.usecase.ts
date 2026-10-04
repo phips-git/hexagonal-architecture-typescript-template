@@ -3,7 +3,6 @@ import {
   type LoggerPort,
   type UsecaseExecutionDependencies
 } from '@hexagonal-ts-template/common/application';
-import { NotFoundError } from '@hexagonal-ts-template/common/domain';
 import type {
   ProjectId,
   TaskId,
@@ -15,7 +14,11 @@ import {
   ensureTaskReferenceExists
 } from '../../domain/policies';
 import type { TaskPersistencePort } from '../../domain/ports';
-import { validateTaskUpdateProperties } from '../../domain/validators';
+import {
+  validateProjectId,
+  validateTaskId,
+  validateTaskUpdateProperties
+} from '../../domain/validators';
 import { assembleTaskUpdateRecord } from '../assemblers';
 
 export interface UpdateTaskInput {
@@ -51,21 +54,20 @@ export class UpdateTaskUsecase extends Usecase<
   ): Promise<UpdateTaskOutput> {
     ensureCanUpdateTask(authorizationContext);
 
-    ensureTaskReferenceExists(
-      await this.taskPersistence.findReference(taskId, projectId),
-      { taskId, authorizationContext }
+    validateProjectId(projectId);
+    validateTaskId(taskId);
+
+    const taskReference = await this.taskPersistence.findReference(
+      projectId,
+      taskId
     );
+    ensureTaskReferenceExists(taskReference, { projectId, taskId });
 
-    const currentTask = await this.taskPersistence.findById(taskId, projectId);
-    if (!currentTask) {
-      throw new NotFoundError(`Task with id ${taskId} not found`);
-    }
-
-    validateTaskUpdateProperties(updateProperties, currentTask.status);
+    validateTaskUpdateProperties(updateProperties, taskReference.status);
 
     const updateRecord = assembleTaskUpdateRecord(updateProperties);
 
-    await this.taskPersistence.update(taskId, projectId, updateRecord);
+    await this.taskPersistence.update(projectId, taskId, updateRecord);
 
     logger.info('Task updated', { taskId, projectId });
 

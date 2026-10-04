@@ -7,11 +7,12 @@ export type TaskId = Brand<string, 'TaskId'>;
 
 export interface TaskReference {
   readonly id: TaskId;
-  readonly title: string;
+  readonly projectId: ProjectId;
+  readonly status: TaskStatus;
 }
 
 export interface Task extends TaskReference {
-  readonly projectId: ProjectId;
+  readonly title: string;
   readonly description: string | null;
   readonly status: TaskStatus;
   readonly priority: TaskPriority;
@@ -33,9 +34,16 @@ export type TaskCreationProperties = Pick<
   'title' | 'description' | 'priority' | 'assignedTo' | 'dueDate'
 >;
 
+export type ValidTaskCreationProperties = Brand<
+  TaskCreationProperties,
+  'ValidTaskCreationProperties'
+>;
+
 export interface TaskCreationRecord
-  extends TaskReference, TaskCreationProperties {
-  readonly status: TaskStatus;
+  extends
+    TaskReference,
+    Pick<Task, 'projectId' | 'status'>,
+    TaskCreationProperties {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -44,7 +52,12 @@ export type TaskUpdateProperties = Partial<
   Pick<
     Task,
     'title' | 'description' | 'status' | 'priority' | 'assignedTo' | 'dueDate'
-  > & { completionNotes?: string | undefined }
+  >
+>;
+
+export type ValidTaskUpdateProperties = Brand<
+  TaskUpdateProperties,
+  'ValidTaskUpdateProperties'
 >;
 
 export interface TaskUpdateRecord extends TaskUpdateProperties {

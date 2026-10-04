@@ -5,7 +5,6 @@ import {
 } from '@hexagonal-ts-template/common/application';
 import type {
   ProjectId,
-  TaskId,
   TaskListItem,
   TaskManagementAuthorizationContext
 } from '../../domain/models';
@@ -16,9 +15,7 @@ export interface ListTasksInput {
   readonly projectId: ProjectId;
 }
 
-export interface ListTasksOutput {
-  readonly tasks: ReadonlyArray<TaskListItem>;
-}
+export type ListTasksOutput = ReadonlyArray<TaskListItem>;
 
 export class ListTasksUsecase extends Usecase<ListTasksInput, ListTasksOutput> {
   constructor(
@@ -36,12 +33,6 @@ export class ListTasksUsecase extends Usecase<ListTasksInput, ListTasksOutput> {
 
     logger.info('Tasks listed', { projectId, taskCount: tasks.length });
 
-    return {
-      tasks: tasks.map((task) => ({
-        ...task,
-        id: task.id as TaskId,
-        projectId: task.projectId as ProjectId
-      }))
-    };
+    return tasks;
   }
 }

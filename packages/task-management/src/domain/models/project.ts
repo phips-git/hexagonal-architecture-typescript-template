@@ -15,6 +15,11 @@ export interface Project extends ProjectReference {
 
 export type ProjectCreationProperties = Pick<Project, 'name' | 'description'>;
 
+export type ValidProjectCreationProperties = Brand<
+  ProjectCreationProperties,
+  'ValidProjectCreationProperties'
+>;
+
 export interface ProjectCreationRecord
   extends ProjectReference, ProjectCreationProperties {
   readonly createdAt: Date;
@@ -23,6 +28,11 @@ export interface ProjectCreationRecord
 
 export type ProjectUpdateProperties = Partial<
   Pick<Project, 'name' | 'description'>
+>;
+
+export type ValidProjectUpdateProperties = Brand<
+  ProjectCreationProperties,
+  'ValidProjectUpdateProperties'
 >;
 
 export interface ProjectUpdateRecord extends ProjectUpdateProperties {

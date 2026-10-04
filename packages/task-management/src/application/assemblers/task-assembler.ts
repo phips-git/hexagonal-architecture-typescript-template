@@ -1,5 +1,6 @@
 import {
   TaskStatus,
+  type ProjectId,
   type TaskCreationProperties,
   type TaskCreationRecord,
   type TaskId,
@@ -9,13 +10,15 @@ import {
 
 export function assembleTaskCreationRecord(
   id: TaskId,
+  projectId: ProjectId,
   creationProperties: Readonly<TaskCreationProperties>
 ): Readonly<TaskCreationRecord> {
   const now = new Date();
 
   return {
-    ...creationProperties,
     id,
+    projectId,
+    ...creationProperties,
     status: TaskStatus.PENDING,
     createdAt: now,
     updatedAt: now

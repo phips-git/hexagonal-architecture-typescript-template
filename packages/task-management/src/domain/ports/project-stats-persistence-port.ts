@@ -1,5 +1,7 @@
-export interface ProjectStatsPersistencePort {
-  incrementTaskCount(projectId: string, lastActivityAt: Date): Promise<void>;
+import type { ProjectId } from '../models';
 
-  decrementTaskCount(projectId: string, lastActivityAt: Date): Promise<void>;
+export interface ProjectStatsPersistencePort {
+  incrementTaskCount(projectId: ProjectId, lastActivityAt: Date): Promise<void>;
+
+  decrementTaskCount(projectId: ProjectId, lastActivityAt: Date): Promise<void>;
 }

@@ -21,41 +21,35 @@ export function ensureProjectReferenceExists(
 export function ensureCanCreateProject({
   role
 }: Readonly<TaskManagementAuthorizationContext>): void {
-  if (role === UserRole.VIEWER) {
-    throw new ForbiddenError(`${UserRole.VIEWER} cannot create projects`);
-  }
-
   if (role === UserRole.ADMIN || role === UserRole.MEMBER) {
     return;
   }
 
-  throw new ForbiddenError('User is not authorized to create projects');
+  throw new ForbiddenError('User is not authorized to create projects', {
+    context: { role }
+  });
 }
 
 export function ensureCanUpdateProject({
   role
 }: Readonly<TaskManagementAuthorizationContext>): void {
-  if (role === UserRole.VIEWER) {
-    throw new ForbiddenError(`${UserRole.VIEWER} cannot update projects`);
-  }
-
   if (role === UserRole.ADMIN || role === UserRole.MEMBER) {
     return;
   }
 
-  throw new ForbiddenError('User is not authorized to update projects');
+  throw new ForbiddenError('User is not authorized to update projects', {
+    context: { role }
+  });
 }
 
 export function ensureCanDeleteProject({
   role
 }: Readonly<TaskManagementAuthorizationContext>): void {
-  if (role !== UserRole.ADMIN) {
-    if (role === UserRole.VIEWER || role === UserRole.MEMBER) {
-      throw new ForbiddenError(
-        `${role.charAt(0).toUpperCase() + role.slice(1)}s cannot delete projects`
-      );
-    }
-
-    throw new ForbiddenError('User is not authorized to delete projects');
+  if (role === UserRole.ADMIN) {
+    return;
   }
+
+  throw new ForbiddenError('User is not authorized to delete projects', {
+    context: { role }
+  });
 }

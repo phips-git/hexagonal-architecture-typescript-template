@@ -3,7 +3,6 @@ import {
   type LoggerPort,
   type UsecaseExecutionDependencies
 } from '@hexagonal-ts-template/common/application';
-import { NotFoundError } from '@hexagonal-ts-template/common/domain';
 import type {
   ProjectId,
   TaskManagementAuthorizationContext
@@ -19,14 +18,7 @@ export interface DeleteProjectInput {
   readonly projectId: ProjectId;
 }
 
-export interface DeleteProjectOutput {
-  readonly projectId: ProjectId;
-}
-
-export class DeleteProjectUsecase extends Usecase<
-  DeleteProjectInput,
-  DeleteProjectOutput
-> {
+export class DeleteProjectUsecase extends Usecase<DeleteProjectInput, void> {
   constructor(
     dependencies: UsecaseExecutionDependencies,
     private readonly projectPersistence: ProjectPersistencePort
@@ -37,20 +29,16 @@ export class DeleteProjectUsecase extends Usecase<
   protected async executeInternal(
     { authorizationContext, projectId }: DeleteProjectInput,
     logger: LoggerPort
-  ): Promise<DeleteProjectOutput> {
+  ): Promise<void> {
     ensureCanDeleteProject(authorizationContext);
 
-    const projectReference =
-      await this.projectPersistence.findReference(projectId);
-    ensureProjectReferenceExists(projectReference, { projectId });
+    ensureProjectReferenceExists(
+      await this.projectPersistence.findReference(projectId),
+      { projectId }
+    );
 
-    const deleted = await this.projectPersistence.remove(projectId);
-    if (!deleted) {
-      throw new NotFoundError(`Project with id ${projectId} not found`);
-    }
+    await this.projectPersistence.remove(projectId);
 
     logger.info('Project deleted', { projectId });
-
-    return { projectId };
   }
 }

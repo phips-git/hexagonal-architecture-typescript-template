@@ -4,14 +4,16 @@ import {
   type UnitOfWorkPort,
   type UsecaseExecutionDependencies
 } from '@hexagonal-ts-template/common/application';
-import { NotFoundError } from '@hexagonal-ts-template/common/domain';
 import type {
   ProjectId,
   TaskCreationProperties,
   TaskId,
   TaskManagementAuthorizationContext
 } from '../../domain/models';
-import { ensureCanCreateTask } from '../../domain/policies';
+import {
+  ensureCanCreateTask,
+  ensureProjectReferenceExists
+} from '../../domain/policies';
 import type {
   ProjectPersistencePort,
   ProjectStatsPersistencePort,
@@ -39,10 +41,10 @@ export class CreateTaskUsecase extends Usecase<
 > {
   constructor(
     dependencies: UsecaseExecutionDependencies,
-    private readonly taskPersistence: TaskPersistencePort,
     private readonly projectPersistence: ProjectPersistencePort,
-    private readonly projectStatsPersistence: ProjectStatsPersistencePort,
-    private readonly unitOfWork: UnitOfWorkPort
+    private readonly unitOfWork: UnitOfWorkPort,
+    private readonly taskPersistence: TaskPersistencePort,
+    private readonly projectStatsPersistence: ProjectStatsPersistencePort
   ) {
     super(dependencies);
   }
@@ -53,33 +55,32 @@ export class CreateTaskUsecase extends Usecase<
   ): Promise<CreateTaskOutput> {
     ensureCanCreateTask(authorizationContext);
 
-    const validatedProjectId = validateProjectId(projectId);
-
-    const projectReference =
-      await this.projectPersistence.findReference(validatedProjectId);
-    if (!projectReference) {
-      throw new NotFoundError(`Project with id ${projectId} not found`);
-    }
-
+    validateProjectId(projectId);
     validateTaskCreationProperties(creationProperties);
+
+    ensureProjectReferenceExists(
+      await this.projectPersistence.findReference(projectId),
+      { projectId }
+    );
 
     const creationRecord = assembleTaskCreationRecord(
       this.dependencies.generateId(),
+      projectId,
       creationProperties
     );
 
     const taskId = await this.unitOfWork.withTransaction(async () => {
-      const { id } = await this.taskPersistence.create(creationRecord);
+      const { id: taskId } = await this.taskPersistence.create(creationRecord);
 
       await this.projectStatsPersistence.incrementTaskCount(
-        validatedProjectId,
+        projectId,
         new Date()
       );
 
-      return id;
+      return taskId;
     });
 
-    logger.info('Task created', { taskId, projectId });
+    logger.info('Task created', { projectId, taskId });
 
     return { taskId };
   }

@@ -6,6 +6,8 @@ import {
 } from '@hexagonal-ts-template/common/domain';
 import {
   TaskStatus,
+  type ProjectId,
+  type TaskId,
   type TaskManagementAuthorizationContext,
   type TaskReference
 } from '../models';
@@ -13,66 +15,63 @@ import {
 export function ensureTaskReferenceExists(
   taskReference: TaskReference | null | undefined,
   context: Readonly<{
-    taskId: string;
-    authorizationContext: TaskManagementAuthorizationContext;
+    projectId: ProjectId;
+    taskId: TaskId;
   }>
 ): asserts taskReference is TaskReference {
   if (!taskReference) {
     throw new NotFoundError(`Task with id ${context.taskId} not found`);
   }
 
-  if (taskReference.id !== context.taskId) {
-    throw new NotFoundError(
-      `Provided task id ${context.taskId} is not matching with task reference id ${taskReference.id}`
-    );
+  if (context.projectId !== taskReference.projectId) {
+    throw new NotFoundError('Task does not belong to given project', {
+      context: {
+        providedProjectId: context.projectId,
+        referenceProjectId: taskReference.projectId
+      }
+    });
   }
 }
 
 export function ensureCanCreateTask({
   role
 }: Readonly<TaskManagementAuthorizationContext>): void {
-  if (role === UserRole.VIEWER) {
-    throw new ForbiddenError(`${UserRole.VIEWER} cannot create tasks`);
-  }
-
   if (role === UserRole.ADMIN || role === UserRole.MEMBER) {
     return;
   }
 
-  throw new UnauthorizedError('User is not authenticated');
+  throw new UnauthorizedError('User is not authorized to create tasks', {
+    context: { role }
+  });
 }
 
 export function ensureCanUpdateTask({
   role
 }: Readonly<TaskManagementAuthorizationContext>): void {
-  if (role === UserRole.VIEWER) {
-    throw new ForbiddenError(`${UserRole.VIEWER} cannot update tasks`);
-  }
-
   if (role === UserRole.ADMIN || role === UserRole.MEMBER) {
     return;
   }
 
-  throw new UnauthorizedError('User is not authenticated');
+  throw new UnauthorizedError('User is not authorized to update tasks', {
+    context: { role }
+  });
 }
 
 export function ensureCanDeleteTask({
   role
 }: Readonly<TaskManagementAuthorizationContext>): void {
-  if (role !== UserRole.ADMIN) {
-    if (role === UserRole.VIEWER || role === UserRole.MEMBER) {
-      throw new ForbiddenError(
-        `${role.charAt(0).toUpperCase() + role.slice(1)}s cannot delete tasks`
-      );
-    }
-
-    throw new UnauthorizedError('User is not authenticated');
+  if (role === UserRole.ADMIN) {
+    return;
   }
+
+  throw new UnauthorizedError('User is not authorized to delete tasks', {
+    context: { role }
+  });
 }
 
 export function ensureCanTransitionTaskStatus(
   currentStatus: TaskStatus,
-  newStatus: TaskStatus
+  targetStatus: TaskStatus
 ): void {
   const validTransitions: Record<TaskStatus, TaskStatus[]> = {
     [TaskStatus.PENDING]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
@@ -87,9 +86,9 @@ export function ensureCanTransitionTaskStatus(
 
   const allowedTargets = validTransitions[currentStatus];
 
-  if (!allowedTargets.includes(newStatus)) {
-    throw new ForbiddenError(
-      `Cannot transition task from ${currentStatus} to ${newStatus}`
-    );
+  if (!allowedTargets.includes(targetStatus)) {
+    throw new ForbiddenError('Cannot transition task', {
+      context: { currentStatus, newStatus: targetStatus }
+    });
   }
 }
