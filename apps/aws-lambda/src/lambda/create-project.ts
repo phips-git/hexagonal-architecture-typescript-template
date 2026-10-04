@@ -36,7 +36,7 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   const body = event.body ? JSON.parse(event.body) : {};
 
-  // TODO: Validate body to have schema of CreateProjectInput
+  // TODO: Validate body with schema of CreateProjectInput
 
   try {
     const usecase = await getCreateProjectUsecase();
@@ -47,7 +47,7 @@ export const handler = async (
     });
 
     return {
-      statusCode: 200,
+      statusCode: 201,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ success: true })
     };

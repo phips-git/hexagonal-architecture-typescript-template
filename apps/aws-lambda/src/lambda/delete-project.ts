@@ -37,7 +37,7 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   const body = event.body ? JSON.parse(event.body) : {};
 
-  // TODO: Validate body to have schema of DeleteProjectInput
+  // TODO: Validate body with schema of DeleteProjectInput
 
   try {
     const usecase = await getDeleteProjectUsecase();

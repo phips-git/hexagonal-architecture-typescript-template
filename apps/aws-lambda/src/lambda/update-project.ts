@@ -6,33 +6,28 @@ import { UpdateProjectUsecase } from '@hexagonal-ts-template/task-management/app
 import type { ProjectId } from '@hexagonal-ts-template/task-management/domain';
 import { SqliteProjectPersistencePort } from '@hexagonal-ts-template/task-management/infrastructure';
 import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-
-const loggerFactory = () => createConsoleLogger('UpdateProjectUsecase');
+import { nanoid } from 'nanoid';
 
 let databaseClient: SqliteDatabaseClient | null = null;
 let updateProjectUsecase: UpdateProjectUsecase | null = null;
 
-async function getDatabaseClient(): Promise<SqliteDatabaseClient> {
-  if (!databaseClient) {
-    const { initializeSchema } =
-      await import('@hexagonal-ts-template/task-management/infrastructure');
-    databaseClient = await SqliteDatabaseClient.create();
-    await initializeSchema(databaseClient.getDatabase());
-  }
-  return databaseClient;
-}
-
 async function getUpdateProjectUsecase(): Promise<UpdateProjectUsecase> {
   if (!updateProjectUsecase) {
-    const client = await getDatabaseClient();
+    const client = databaseClient ?? (await SqliteDatabaseClient.create());
     const db = client.getDatabase();
+
+    const usecaseExectionDependencies = {
+      generateId: <T>() => nanoid() as T,
+      loggerFactory: () => createConsoleLogger('UpdateProjectUsecase')
+    };
     const projectPersistence = new SqliteProjectPersistencePort(db);
 
     updateProjectUsecase = new UpdateProjectUsecase(
-      { generateId: () => require('uuid').v4(), loggerFactory },
+      usecaseExectionDependencies,
       projectPersistence
     );
   }
+
   return updateProjectUsecase;
 }
 
@@ -42,10 +37,13 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   const body = event.body ? JSON.parse(event.body) : {};
 
+  // TODO: Validate body with schema of UpdateProjectInput
+
   try {
     const usecase = await getUpdateProjectUsecase();
 
     await usecase.execute({
+      // TODO: Get authorization context from auth layer
       authorizationContext: body.authorizationContext,
       projectId: event.pathParameters?.id as ProjectId,
       updateProperties: body.updateProperties
