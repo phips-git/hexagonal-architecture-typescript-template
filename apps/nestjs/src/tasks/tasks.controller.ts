@@ -1,4 +1,7 @@
-import { GetAuthenticatedUserUsecase } from '@hexagonal-ts-template/auth/application';
+import {
+  GetAuthenticatedUserUsecase,
+  type GetAuthenticatedUserOutput
+} from '@hexagonal-ts-template/auth/application';
 import {
   Body,
   Controller,
@@ -35,27 +38,25 @@ export class TasksController {
       headers: { authorization: `Bearer token` }
     });
     if (!user) throw new Error('Unauthorized');
-    return this.tasksService.createTask(createTaskDto, projectId, {
-      userId: user.id,
-      userEmail: user.email,
-      userRole: user.role
-    });
+    return this.tasksService.createTask(
+      createTaskDto,
+      projectId,
+      this.mapUserToAuthContext(user)
+    );
   }
 
   @Get(':taskId')
   async getTask(
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string
-  ): Promise<{
-    task: import('@hexagonal-ts-template/task-management/domain').Task;
-  }> {
+  ): Promise<{ task: unknown }> {
     throw new Error('Not implemented');
   }
 
   @Get()
-  async listTasks(@Param('projectId') projectId: string): Promise<{
-    tasks: import('@hexagonal-ts-template/task-management/domain').TaskListItem[];
-  }> {
+  async listTasks(
+    @Param('projectId') projectId: string
+  ): Promise<{ tasks: unknown[] }> {
     throw new Error('Not implemented');
   }
 
@@ -75,5 +76,14 @@ export class TasksController {
     @Param('taskId') taskId: string
   ): Promise<void> {
     throw new Error('Not implemented');
+  }
+
+  private mapUserToAuthContext(user: GetAuthenticatedUserOutput) {
+    if (!user) throw new Error('User should not be null');
+    return {
+      tenantId: user.id,
+      projectId: '',
+      role: user.role
+    };
   }
 }

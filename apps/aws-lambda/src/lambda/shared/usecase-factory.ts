@@ -5,6 +5,7 @@ import {
 } from '@hexagonal-ts-template/auth/infrastructure';
 import {
   createConsoleLogger,
+  NanoidGeneratorAdapter,
   SqliteUnitOfWorkAdapter
 } from '@hexagonal-ts-template/common/infrastructure';
 import {
@@ -21,107 +22,138 @@ import {
   SqliteProjectStatsPersistenceAdapter,
   SqliteTaskPersistenceAdapter
 } from '@hexagonal-ts-template/task-management/infrastructure';
-import { nanoid } from 'nanoid';
 import { getDatabase } from './database';
 
-export function getCreateTaskUsecase() {
-  const db = getDatabase();
-  const projectPersistence = new SqliteProjectPersistenceAdapter(db);
-  const unitOfWork = new SqliteUnitOfWorkAdapter(db);
-  const taskPersistence = new SqliteTaskPersistenceAdapter(db);
-  const projectStatsPersistence = new SqliteProjectStatsPersistenceAdapter(db);
+class Container {
+  private static db: any = undefined;
+  private static projectPersistence:
+    SqliteProjectPersistenceAdapter | undefined = undefined;
+  private static taskPersistence: SqliteTaskPersistenceAdapter | undefined =
+    undefined;
+  private static unitOfWork: SqliteUnitOfWorkAdapter | undefined = undefined;
+  private static projectStatsPersistence:
+    SqliteProjectStatsPersistenceAdapter | undefined = undefined;
+  private static generator: NanoidGeneratorAdapter | undefined = undefined;
 
+  static getDb() {
+    if (!this.db) {
+      this.db = getDatabase();
+    }
+    return this.db;
+  }
+
+  static getProjectPersistence() {
+    if (!this.projectPersistence) {
+      this.projectPersistence = new SqliteProjectPersistenceAdapter(
+        this.getDb()
+      );
+    }
+    return this.projectPersistence;
+  }
+
+  static getTaskPersistence() {
+    if (!this.taskPersistence) {
+      this.taskPersistence = new SqliteTaskPersistenceAdapter(this.getDb());
+    }
+    return this.taskPersistence;
+  }
+
+  static getUnitOfWork() {
+    if (!this.unitOfWork) {
+      this.unitOfWork = new SqliteUnitOfWorkAdapter(this.getDb());
+    }
+    return this.unitOfWork;
+  }
+
+  static getProjectStatsPersistence() {
+    if (!this.projectStatsPersistence) {
+      this.projectStatsPersistence = new SqliteProjectStatsPersistenceAdapter(
+        this.getDb()
+      );
+    }
+    return this.projectStatsPersistence;
+  }
+
+  static getGenerator() {
+    if (!this.generator) {
+      this.generator = new NanoidGeneratorAdapter();
+    }
+    return this.generator;
+  }
+}
+
+export function getCreateTaskUsecase() {
   return new CreateTaskUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('CreateTaskUsecase')
     },
-    projectPersistence,
-    unitOfWork,
-    taskPersistence,
-    projectStatsPersistence
+    Container.getProjectPersistence(),
+    Container.getUnitOfWork(),
+    Container.getTaskPersistence(),
+    Container.getProjectStatsPersistence()
   );
 }
 
 export function getUpdateTaskUsecase() {
-  const db = getDatabase();
-  const taskPersistence = new SqliteTaskPersistenceAdapter(db);
-
   return new UpdateTaskUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('UpdateTaskUsecase')
     },
-    taskPersistence
+    Container.getTaskPersistence()
   );
 }
 
 export function getDeleteTaskUsecase() {
-  const db = getDatabase();
-  const unitOfWork = new SqliteUnitOfWorkAdapter(db);
-  const taskPersistence = new SqliteTaskPersistenceAdapter(db);
-  const projectStatsPersistence = new SqliteProjectStatsPersistenceAdapter(db);
-
   return new DeleteTaskUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('DeleteTaskUsecase')
     },
-    taskPersistence,
-    unitOfWork,
-    projectStatsPersistence
+    Container.getTaskPersistence(),
+    Container.getUnitOfWork(),
+    Container.getProjectStatsPersistence()
   );
 }
 
 export function getListTasksUsecase() {
-  const db = getDatabase();
-  const taskPersistence = new SqliteTaskPersistenceAdapter(db);
-
   return new ListTasksUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('ListTasksUsecase')
     },
-    taskPersistence
+    Container.getTaskPersistence()
   );
 }
 
 export function getCreateProjectUsecase() {
-  const db = getDatabase();
-  const projectPersistence = new SqliteProjectPersistenceAdapter(db);
-
   return new CreateProjectUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('CreateProjectUsecase')
     },
-    projectPersistence
+    Container.getProjectPersistence()
   );
 }
 
 export function getUpdateProjectUsecase() {
-  const db = getDatabase();
-  const projectPersistence = new SqliteProjectPersistenceAdapter(db);
-
   return new UpdateProjectUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('UpdateProjectUsecase')
     },
-    projectPersistence
+    Container.getProjectPersistence()
   );
 }
 
 export function getDeleteProjectUsecase() {
-  const db = getDatabase();
-  const projectPersistence = new SqliteProjectPersistenceAdapter(db);
-
   return new DeleteProjectUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('DeleteProjectUsecase')
     },
-    projectPersistence
+    Container.getProjectPersistence()
   );
 }
 
@@ -132,12 +164,11 @@ export function getGetAuthenticatedUserUsecase() {
     issuer: 'dev-app',
     audience: 'dev-api'
   });
-
   const userPersistence = new NoOpUserPersistenceAdapter();
 
   return new GetAuthenticatedUserUsecase(
     {
-      generateId: <T>() => nanoid() as T,
+      generateId: Container.getGenerator().generate,
       loggerFactory: () => createConsoleLogger('GetAuthenticatedUserUsecase')
     },
     authAdapter,

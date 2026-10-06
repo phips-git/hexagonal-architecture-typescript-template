@@ -1,7 +1,14 @@
-import type { UserPersistencePort } from '@hexagonal-ts-template/auth/domain';
-import { JwtAuthenticationAdapter } from '@hexagonal-ts-template/auth/infrastructure';
+import type {
+  AuthenticationPort,
+  UserPersistencePort
+} from '@hexagonal-ts-template/auth/domain';
+import {
+  JwtAuthenticationAdapter,
+  NoOpUserPersistenceAdapter
+} from '@hexagonal-ts-template/auth/infrastructure';
 import {
   createConsoleLogger,
+  NanoidGeneratorAdapter,
   SqliteUnitOfWorkAdapter
 } from '@hexagonal-ts-template/common/infrastructure';
 import type {
@@ -19,18 +26,19 @@ import { ConfigService } from '@nestjs/config';
 import Database from 'better-sqlite3';
 
 export interface PersistencePorts {
+  authenticationPort: AuthenticationPort;
   userPersistence: UserPersistencePort;
   taskPersistence: TaskPersistencePort;
   projectPersistence: ProjectPersistencePort;
   projectStatsPersistence: ProjectStatsPersistencePort;
+  generator: NanoidGeneratorAdapter;
 }
 
 export const DATABASE_CLIENT = 'DATABASE_CLIENT';
-export const TASKS_DATABASE_CLIENT = 'TASKS_DATABASE_CLIENT';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
-  private database: Database | null = null;
+  private database: any = null;
   private ports: PersistencePorts | null = null;
   private unitOfWork: SqliteUnitOfWorkAdapter | null = null;
 
@@ -42,16 +50,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.database = new Database(dbPath);
     this.database.pragma('foreign_keys = ON');
     this.ports = {
-      userPersistence: new JwtAuthenticationAdapter({
-        secretOrPrivateKey: this.configService.get<string>('app.jwtSecret')!,
+      authenticationPort: new JwtAuthenticationAdapter({
+        secretOrPrivateKey: this.configService.get<string>(
+          'app.jwtSecret'
+        ) as any,
         issuer: this.configService.get<string>('app.jwtIssuer')!,
         audience: this.configService.get<string>('app.jwtAudience')!
       }),
+      userPersistence: new NoOpUserPersistenceAdapter(),
       taskPersistence: new SqliteTaskPersistenceAdapter(this.database!),
       projectPersistence: new SqliteProjectPersistenceAdapter(this.database!),
       projectStatsPersistence: new SqliteProjectStatsPersistenceAdapter(
         this.database!
-      )
+      ),
+      generator: new NanoidGeneratorAdapter()
     };
     this.unitOfWork = new SqliteUnitOfWorkAdapter(this.database!);
     createConsoleLogger('DatabaseService').info('Database initialized', {

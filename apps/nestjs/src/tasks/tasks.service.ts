@@ -1,15 +1,21 @@
+import type { UsecaseExecutionDependencies } from '@hexagonal-ts-template/common/application';
 import {
   CreateTaskUsecase,
   DeleteTaskUsecase,
   UpdateTaskUsecase
 } from '@hexagonal-ts-template/task-management/application';
+import type {
+  ProjectId,
+  TaskManagementAuthorizationContext,
+  TenantId
+} from '@hexagonal-ts-template/task-management/domain';
 import { Injectable } from '@nestjs/common';
 import { CreateTaskDto, UpdateTaskDto } from './dtos/create-task.dto';
 
 export interface AuthorizationContext {
-  userId: string;
-  userEmail: string;
-  userRole: string;
+  readonly tenantId: string;
+  readonly projectId: string;
+  readonly role: string;
 }
 
 @Injectable()
@@ -18,27 +24,27 @@ export class TasksService {
     private readonly databaseService: import('../infrastructure/database.service').DatabaseService
   ) {}
 
+  private getUsecaseDependencies(): UsecaseExecutionDependencies {
+    return {
+      generateId: () =>
+        this.databaseService.getPersistencePorts().generator.generate(),
+      loggerFactory: (name: string) => {
+        const mod = require('@hexagonal-ts-template/common/infrastructure');
+        return mod.createConsoleLogger(name);
+      }
+    };
+  }
+
   async createTask(
     dto: CreateTaskDto,
     projectId: string,
     authorizationContext: AuthorizationContext
   ): Promise<{ taskId: string }> {
     const persistencePorts = this.databaseService.getPersistencePorts();
-    const usecase = new CreateTaskUsecase(
-      {
-        generateId: () => `id_${Date.now()}`,
-        loggerFactory: () =>
-          import('@hexagonal-ts-template/common/infrastructure').then((mod) =>
-            mod.createConsoleLogger('TasksService')
-          )
-      },
-      persistencePorts.taskPersistence,
-      persistencePorts.projectPersistence,
-      persistencePorts.projectStatsPersistence,
-      persistencePorts
-    );
+    const usecase = this.getCreateTaskUsecase(persistencePorts);
     const output = await usecase.execute({
-      authorizationContext,
+      authorizationContext:
+        this.mapToTaskManagementAuthContext(authorizationContext),
       projectId: projectId as any,
       creationProperties: {
         title: dto.title,
@@ -58,18 +64,10 @@ export class TasksService {
     authorizationContext: AuthorizationContext
   ): Promise<{ taskId: string }> {
     const persistencePorts = this.databaseService.getPersistencePorts();
-    const usecase = new UpdateTaskUsecase(
-      {
-        generateId: () => `id_${Date.now()}`,
-        loggerFactory: () =>
-          import('@hexagonal-ts-template/common/infrastructure').then((mod) =>
-            mod.createConsoleLogger('TasksService')
-          )
-      },
-      persistencePorts.taskPersistence
-    );
+    const usecase = this.getUpdateTaskUsecase(persistencePorts);
     const output = await usecase.execute({
-      authorizationContext,
+      authorizationContext:
+        this.mapToTaskManagementAuthContext(authorizationContext),
       projectId: projectId as any,
       taskId: taskId as any,
       updateProperties: {
@@ -90,20 +88,10 @@ export class TasksService {
     authorizationContext: AuthorizationContext
   ): Promise<void> {
     const persistencePorts = this.databaseService.getPersistencePorts();
-    const usecase = new DeleteTaskUsecase(
-      {
-        generateId: () => `id_${Date.now()}`,
-        loggerFactory: () =>
-          import('@hexagonal-ts-template/common/infrastructure').then((mod) =>
-            mod.createConsoleLogger('TasksService')
-          )
-      },
-      persistencePorts.taskPersistence,
-      persistencePorts,
-      persistencePorts.projectStatsPersistence
-    );
+    const usecase = this.getDeleteTaskUsecase(persistencePorts);
     await usecase.execute({
-      authorizationContext,
+      authorizationContext:
+        this.mapToTaskManagementAuthContext(authorizationContext),
       projectId: projectId as any,
       taskId: taskId as any
     });
@@ -112,8 +100,8 @@ export class TasksService {
   async getTask(projectId: string, taskId: string): Promise<any> {
     const persistencePorts = this.databaseService.getPersistencePorts();
     return await persistencePorts.taskPersistence.findById(
-      taskId,
-      projectId as any
+      projectId as any,
+      taskId as any
     );
   }
 
@@ -122,5 +110,47 @@ export class TasksService {
     return await persistencePorts.taskPersistence.findAllByProject(
       projectId as any
     );
+  }
+
+  private getCreateTaskUsecase(
+    persistencePorts: import('../infrastructure/database.service').PersistencePorts
+  ): CreateTaskUsecase {
+    return new CreateTaskUsecase(
+      this.getUsecaseDependencies(),
+      persistencePorts.projectPersistence as any,
+      persistencePorts as any,
+      persistencePorts.taskPersistence,
+      persistencePorts.projectStatsPersistence
+    );
+  }
+
+  private getUpdateTaskUsecase(
+    persistencePorts: import('../infrastructure/database.service').PersistencePorts
+  ): UpdateTaskUsecase {
+    return new UpdateTaskUsecase(
+      this.getUsecaseDependencies(),
+      persistencePorts.taskPersistence
+    );
+  }
+
+  private getDeleteTaskUsecase(
+    persistencePorts: import('../infrastructure/database.service').PersistencePorts
+  ): DeleteTaskUsecase {
+    return new DeleteTaskUsecase(
+      this.getUsecaseDependencies(),
+      persistencePorts.taskPersistence,
+      persistencePorts as any,
+      persistencePorts.projectStatsPersistence
+    );
+  }
+
+  private mapToTaskManagementAuthContext(
+    context: AuthorizationContext
+  ): TaskManagementAuthorizationContext {
+    return {
+      tenantId: context.tenantId as TenantId,
+      projectId: context.projectId as ProjectId,
+      role: context.role as any
+    };
   }
 }

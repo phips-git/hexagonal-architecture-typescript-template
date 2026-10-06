@@ -2,9 +2,10 @@ import {
   ArgumentsHost,
   BadRequestException,
   Catch,
-  ExceptionFilter
+  ExceptionFilter,
+  HttpStatus
 } from '@nestjs/common';
-import { HttpStatus, Response } from 'express';
+import { Response } from 'express';
 
 @Catch(BadRequestException)
 export class ValidationExceptionFilter implements ExceptionFilter {

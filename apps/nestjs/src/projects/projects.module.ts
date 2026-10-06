@@ -3,7 +3,6 @@ import {
   DATABASE_CLIENT,
   DatabaseService
 } from '../infrastructure/database.service';
-import { OutputMappingService } from '../infrastructure/output-mapping.service';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 
@@ -13,7 +12,6 @@ import { ProjectsService } from './projects.service';
   providers: [
     DatabaseService,
     ProjectsService,
-    OutputMappingService,
     {
       provide: DATABASE_CLIENT,
       useFactory: (dbService: DatabaseService) => dbService,

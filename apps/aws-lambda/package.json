@@ -2,7 +2,7 @@
   "name": "@hexagonal-ts-template/aws-lambda",
   "private": true,
   "scripts": {
-    "build": "esbuild 'src/lambda/*.ts' --platform=node --format=cjs --bundle --external:aws-sdk --external:drizzle-orm --external:sqlite3 --external:@hexagonal-ts-template/common --external:@hexagonal-ts-template/task-management --main-fields=main:default,module --target=node22 --outdir=dist",
+    "build": "esbuild 'src/lambda/*.ts' --platform=node --format=cjs --bundle --external:aws-sdk --external:sqlite3 --external:@hexagonal-ts-template/common --external:@hexagonal-ts-template/task-management --main-fields=main:default,module --target=node22 --outdir=dist",
     "db:init": "tsx src/scripts/init-db.ts",
     "dev": "npm run db:init && docker run -d -p 4566:4566 -p 3000:3000 --name localstack localstack/localstack:3.0",
     "dev:stop": "docker stop localstack",
@@ -13,8 +13,7 @@
     "@hexagonal-ts-template/common": "*",
     "@hexagonal-ts-template/task-management": "*",
     "aws-lambda": "1.0.7",
-    "nanoid": "6.0.1",
-    "valibot": "1.5.0"
+    "nanoid": "6.0.1"
   },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",

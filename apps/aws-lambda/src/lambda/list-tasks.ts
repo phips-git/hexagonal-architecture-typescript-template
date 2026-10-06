@@ -1,16 +1,14 @@
-import type { UserRole } from '@hexagonal-ts-template/common/domain';
 import type {
   ProjectId,
-  TaskManagementAuthorizationContext,
-  TenantId
+  TaskManagementAuthorizationContext
 } from '@hexagonal-ts-template/task-management/domain';
 import type {
   APIGatewayProxyEvent,
   APIGatewayProxyResult,
   Context
 } from 'aws-lambda';
+import { buildLambdaErrorResponse, getListTasksUsecase } from './shared';
 import { authenticateUser } from './shared/auth';
-import { getListTasksUsecase } from './shared/usecase-factory';
 
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -46,9 +44,9 @@ export const handler = async (
     }
 
     const authorizationContext: TaskManagementAuthorizationContext = {
-      tenantId: user.id as TenantId,
+      tenantId: user.tenantId,
       projectId: projectId as ProjectId,
-      role: user.role as UserRole
+      role: user.role
     };
 
     await getListTasksUsecase().execute({
@@ -62,14 +60,6 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        code: 'INTERNAL_ERROR',
-        requestId
-      })
-    };
+    return buildLambdaErrorResponse(error, requestId);
   }
 };

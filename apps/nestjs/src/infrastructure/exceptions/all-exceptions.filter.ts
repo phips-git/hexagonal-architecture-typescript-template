@@ -1,3 +1,4 @@
+import { isDomainError } from '@hexagonal-ts-template/common/domain';
 import {
   ArgumentsHost,
   Catch,
@@ -31,6 +32,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof exceptionResponse === 'object'
           ? exceptionResponse['message'] || exceptionResponse
           : exceptionResponse;
+    } else if (isDomainError(exception)) {
+      status = this.getStatusForDomainError(exception);
+      message = exception.message;
     } else if (exception instanceof Error) {
       message = exception.message;
     }
@@ -41,5 +45,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url
     } satisfies ErrorResponse);
+  }
+
+  private getStatusForDomainError(exception: Error): number {
+    switch (exception.constructor.name) {
+      case 'UnauthorizedError':
+        return HttpStatus.UNAUTHORIZED;
+      case 'ForbiddenError':
+        return HttpStatus.FORBIDDEN;
+      case 'NotFoundError':
+        return HttpStatus.NOT_FOUND;
+      case 'ValidationError':
+        return HttpStatus.BAD_REQUEST;
+      case 'ConflictError':
+        return HttpStatus.CONFLICT;
+      case 'InternalServerError':
+      case 'InvariantError':
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+      case 'ExternalServiceError':
+        return HttpStatus.BAD_GATEWAY;
+      default:
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
   }
 }

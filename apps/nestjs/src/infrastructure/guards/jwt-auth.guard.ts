@@ -17,16 +17,27 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
-    if (!token) throw new UnauthorizedException();
+
+    if (!token) {
+      throw new UnauthorizedException();
+    }
+
     try {
       const user = await this.getAuthenticatedUserUsecase.execute({
-        headers: { authorization: `Bearer ${token}` }
+        headers: {
+          authorization: `Bearer ${token}`
+        }
       });
-      if (!user) throw new UnauthorizedException();
+
+      if (!user) {
+        throw new UnauthorizedException();
+      }
+
       request['user'] = user;
     } catch {
       throw new UnauthorizedException();
     }
+
     return true;
   }
 

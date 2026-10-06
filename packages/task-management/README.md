@@ -4,12 +4,11 @@ This package implements the Task Management domain following the hexagonal archi
 
 ## Overview
 
-This package provides a complete implementation of task and project management functionality, including:
+This package provides a complete implementation of task and project management functionality, following hexagonal architecture with:
 
-- **Domain Layer**: Entities, value objects, **domain policies** (validation and authorization rules)
+- **Domain Layer**: Entities, value objects, domain policies (validation and authorization rules)
 - **Application Layer**: Use cases for task and project operations
-- **Infrastructure Layer**: Database adapters using Drizzle ORM with LibSQL
-- **Composition Layer**: Dependency injection and composition roots
+- **Infrastructure Layer**: SQLite and TypeORM persistence adapters
 
 ## Structure
 
@@ -17,39 +16,30 @@ This package provides a complete implementation of task and project management f
 packages/task-management/
 ├── src/
 │   ├── domain/                    # Domain layer
-│   │   ├── enums/
-│   │   │   ├── task-status.ts     # TaskStatus enum (PENDING, IN_PROGRESS, COMPLETED, CANCELLED)
-│   │   │   └── task-priority.ts   # TaskPriority enum (LOW, MEDIUM, HIGH, URGENT)
-│   │   ├── types/
+│   │   ├── models/
 │   │   │   ├── task.ts            # Task entity
-│   │   │   ├── task-creation-properties.ts
-│   │   │   ├── task-update-properties.ts
 │   │   │   ├── project.ts         # Project entity
+│   │   │   ├── task-priority.enum.ts
+│   │   │   ├── task-status.enum.ts
 │   │   │   ├── authorization-context.ts
-│   │   │   ├── task-id.ts         # Branded TaskId type
-│   │   │   └── project-id.ts      # Branded ProjectId type
+│   │   │   └── tenant.ts
 │   │   ├── policies/              # Domain policies (validation & authorization)
-│   │   │   ├── task-validation.ts       # Task creation/update validation
-│   │   │   ├── task-update-validation.ts
-│   │   │   ├── task-reference-exists.ts
-│   │   │   ├── project-reference-exists.ts
-│   │   │   ├── task-can-create.ts
-│   │   │   ├── task-can-update.ts
-│   │   │   ├── task-can-delete.ts
-│   │   │   ├── task-status-transition.ts
-│   │   │   ├── task-validation-helpers.ts
-│   │   │   ├── project-validation.ts
-│   │   │   ├── project-update-validation.ts
-│   │   │   ├── project-can-create.ts
-│   │   │   ├── project-can-update.ts
-│   │   │   └── project-can-delete.ts
-│   │   └── export.ts
-│   │
-│   ├── application/               # Application layer
+│   │   │   ├── task.policies.ts
+│   │   │   └── project.policies.ts
 │   │   ├── ports/
 │   │   │   ├── task-persistence-port.ts
 │   │   │   ├── project-persistence-port.ts
 │   │   │   └── project-stats-persistence-port.ts
+│   │   ├── validators/
+│   │   │   ├── task.validators.ts
+│   │   │   └── project.validators.ts
+│   │   ├── assemblers/
+│   │   │   ├── task-assembler.ts
+│   │   │   └── project-assembler.ts
+│   │   ├── domain.export.ts
+│   │   └── application.export.ts
+│   │
+│   ├── application/               # Application layer
 │   │   ├── usecases/
 │   │   │   ├── create-task.usecase.ts
 │   │   │   ├── update-task.usecase.ts
@@ -58,27 +48,25 @@ packages/task-management/
 │   │   │   ├── create-project.usecase.ts
 │   │   │   ├── update-project.usecase.ts
 │   │   │   └── delete-project.usecase.ts
-│   │   ├── assemblers/
-│   │   │   ├── task-assembler.ts
-│   │   │   └── project-assembler.ts
-│   │   └── export.ts
+│   │   └── application.export.ts
 │   │
-│   ├── infrastructure/            # Infrastructure layer
-│   │   ├── adapters/
-│   │   │   ├── db.ts              # Database connection
-│   │   │   ├── schemas.ts         # Drizzle ORM schemas
-│   │   │   ├── task-persistence-drizzle-libsql.adapter.ts
-│   │   │   ├── project-persistence-drizzle-libsql.adapter.ts
-│   │   │   └── project-stats-persistence-drizzle-libsql.adapter.ts
-│   │   └── export.ts
-│   │
-│   ├── composition/               # Composition layer
-│   │   ├── composition-root.ts    # Dependency injection
-│   │   ├── in-memory-unit-of-work.ts
-│   │   ├── libsql-unit-of-work.ts
-│   │   └── export.ts
-│   │
-│   └── export.ts                  # Main export
+│   └── infrastructure/            # Infrastructure layer
+│       ├── adapters/
+│       │   ├── sqlite/
+│       │   │   ├── sqlite-schema.ts
+│       │   │   ├── sqlite.task-persistence.adapter.ts
+│       │   │   ├── sqlite.project-persistence.adapter.ts
+│       │   │   └── sqlite.project-stats-persistence.adapter.ts
+│       │   ├── typeorm/
+│       │   │   ├── typeorm-task-persistence-port.ts
+│       │   │   ├── typeorm-project-persistence.adapter.ts
+│       │   │   ├── typeorm-project-stats-persistence-port.ts
+│       │   │   └── entities/
+│       │   │       ├── task.entity.ts
+│       │   │       ├── project.entity.ts
+│       │   │       └── project-stats.entity.ts
+│       │   └── index.ts
+│       └── infrastructure.export.ts
 │
 └── package.json
 ```
@@ -105,37 +93,29 @@ packages/task-management/
 
 ### Infrastructure Layer
 
-- **Drizzle ORM**: Database schema and queries using Drizzle
-- **LibSQL**: SQLite-based storage
+- **SQLite**: SQLite-based storage with `better-sqlite3`
+- **TypeORM**: Alternative ORM adapter for relational databases
 - **Persistence Ports**: Clean interface abstraction for data access
 
 ## Usage
 
-### Basic Example
+### Using Use Cases Directly
 
 ```typescript
-import { TaskManagementCompositionRoot } from '@hexagonal-ts-template/task-management/composition';
-import { InMemoryUnitOfWork } from '@hexagonal-ts-template/task-management/composition';
-import type { UsecaseExecutionDependencies } from '@hexagonal-ts-template/common';
+import { CreateTaskUsecase } from '@hexagonal-ts-template/task-management/application';
+import { TypeOrmTaskPersistencePort } from '@hexagonal-ts-template/task-management/infrastructure';
+import type { TaskPersistencePort } from '@hexagonal-ts-template/task-management/domain';
 
-// Create composition root
-const unitOfWork = new InMemoryUnitOfWork();
-const dependencies: UsecaseExecutionDependencies = {
-  generateId: () => '123e4567-e89b-12d3-a456-426614174000',
-  loggerFactory: (name) => ({
-    info: () => {},
-    warn: () => {},
-    error: () => {}
-  })
-};
+// Create dependencies
+const taskPersistence: TaskPersistencePort = new TypeOrmTaskPersistencePort(
+  taskRepository
+);
 
-const compositionRoot = new TaskManagementCompositionRoot({
-  unitOfWork,
-  dependencies
-});
+// Create use case
+const createTaskUsecase = new CreateTaskUsecase(taskPersistence);
 
-// Use create task use case
-const result = await compositionRoot.createTaskUsecase.execute({
+// Execute
+const result = await createTaskUsecase.execute({
   projectId: '123e4567-e89b-12d3-a456-426614174000',
   creationProperties: {
     title: 'My First Task',
@@ -247,19 +227,10 @@ import {
 
 ```typescript
 import {
-  TaskManagementTaskPersistenceDrizzleLibSQLAdapter,
-  TaskManagementProjectPersistenceDrizzleLibSQLAdapter,
-  initializeDatabase
+  TypeOrmTaskPersistencePort,
+  TypeOrmProjectPersistenceAdapter,
+  initializeSchema
 } from '@hexagonal-ts-template/task-management/infrastructure';
-```
-
-### Composition Export
-
-```typescript
-import {
-  TaskManagementCompositionRoot,
-  InMemoryUnitOfWork
-} from '@hexagonal-ts-template/task-management/composition';
 ```
 
 ## Development
@@ -274,7 +245,7 @@ import {
 
 ### Adding New Policies
 
-1. Create policy function in `policies/` directory
+1. Create policy function in `domain/policies/` directory
 2. Import in use case
 3. Call before business logic
 4. Write tests

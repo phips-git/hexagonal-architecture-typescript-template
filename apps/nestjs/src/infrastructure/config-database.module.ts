@@ -1,18 +1,12 @@
 import { GetAuthenticatedUserUsecase } from '@hexagonal-ts-template/auth/application';
+import { createConsoleLogger } from '@hexagonal-ts-template/common/infrastructure';
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import appConfig from './config/app.config';
 import { DatabaseService } from './database.service';
 
 @Global()
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [appConfig],
-      envFilePath: ['.env', '.env.local']
-    })
-  ],
+  imports: [ConfigModule],
   providers: [
     DatabaseService,
     {
@@ -20,17 +14,16 @@ import { DatabaseService } from './database.service';
       useFactory: (databaseService: DatabaseService) =>
         new GetAuthenticatedUserUsecase(
           {
-            generateId: () => '',
-            loggerFactory: () =>
-              import('@hexagonal-ts-template/common/infrastructure').then(
-                (mod) => mod.createConsoleLogger('App')
-              )
+            generateId: () =>
+              databaseService.getPersistencePorts().generator.generate(),
+            loggerFactory: (name: string) => createConsoleLogger(name)
           },
+          databaseService.getPersistencePorts().authenticationPort,
           databaseService.getPersistencePorts().userPersistence
         ),
       inject: [DatabaseService]
     }
   ],
-  exports: [ConfigModule, DatabaseService, 'getAuthenticatedUserUsecase']
+  exports: [DatabaseService, 'getAuthenticatedUserUsecase']
 })
 export class ConfigDatabaseModule {}

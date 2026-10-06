@@ -1,17 +1,15 @@
-import type { UserRole } from '@hexagonal-ts-template/common/domain';
 import type {
   ProjectCreationProperties,
-  TaskManagementAuthorizationContext,
-  TenantId
+  TaskManagementAuthorizationContext
 } from '@hexagonal-ts-template/task-management/domain';
 import type {
   APIGatewayProxyEvent,
   APIGatewayProxyResult,
   Context
 } from 'aws-lambda';
+import { buildLambdaErrorResponse, getCreateProjectUsecase } from './shared';
 import { authenticateUser } from './shared/auth';
 import { UnauthorizedError, ValidationApiError } from './shared/errors';
-import { getCreateProjectUsecase } from './shared/usecase-factory';
 
 interface CreateProjectBody {
   name: string;
@@ -47,9 +45,9 @@ export const handler = async (
     }
 
     const authorizationContext: TaskManagementAuthorizationContext = {
-      tenantId: user.id as TenantId,
+      tenantId: user.tenantId,
       projectId: null,
-      role: user.role as UserRole
+      role: user.role
     };
 
     const creationProperties: ProjectCreationProperties = {
@@ -68,45 +66,6 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    return buildErrorResponse(error, requestId);
+    return buildLambdaErrorResponse(error, requestId);
   }
 };
-
-function buildErrorResponse(
-  error: unknown,
-  requestId: string
-): APIGatewayProxyResult {
-  if (error instanceof UnauthorizedError) {
-    return {
-      statusCode: 401,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: error.message,
-        code: error.code,
-        requestId
-      })
-    };
-  }
-
-  if (error instanceof ValidationApiError) {
-    return {
-      statusCode: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: error.message,
-        code: error.code,
-        requestId
-      })
-    };
-  }
-
-  return {
-    statusCode: 500,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      error: error instanceof Error ? error.message : String(error),
-      code: 'INTERNAL_ERROR',
-      requestId
-    })
-  };
-}
