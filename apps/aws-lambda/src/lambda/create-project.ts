@@ -1,49 +1,65 @@
-import {
-  createConsoleLogger,
-  SqliteDatabaseClient
-} from '@hexagonal-ts-template/common/infrastructure';
-import { CreateProjectUsecase } from '@hexagonal-ts-template/task-management/application';
-import { SqliteProjectPersistencePort } from '@hexagonal-ts-template/task-management/infrastructure';
-import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-import { nanoid } from 'nanoid';
+import type { UserRole } from '@hexagonal-ts-template/common/domain';
+import type {
+  ProjectCreationProperties,
+  TaskManagementAuthorizationContext,
+  TenantId
+} from '@hexagonal-ts-template/task-management/domain';
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda';
+import { authenticateUser } from './shared/auth';
+import { UnauthorizedError, ValidationApiError } from './shared/errors';
+import { getCreateProjectUsecase } from './shared/usecase-factory';
 
-let databaseClient: SqliteDatabaseClient | null = null;
-let createProjectUsecase: CreateProjectUsecase | null = null;
-
-async function getCreateProjectUsecase(): Promise<CreateProjectUsecase> {
-  if (!createProjectUsecase) {
-    const client = databaseClient ?? (await SqliteDatabaseClient.create());
-    const db = client.getDatabase();
-
-    const usecaseExectionDependencies = {
-      generateId: <T>() => nanoid() as T,
-      loggerFactory: () => createConsoleLogger('CreateProjectUsecase')
-    };
-    const projectPersistence = new SqliteProjectPersistencePort(db);
-
-    createProjectUsecase = new CreateProjectUsecase(
-      usecaseExectionDependencies,
-      projectPersistence
-    );
-  }
-
-  return createProjectUsecase;
+interface CreateProjectBody {
+  name: string;
+  description?: string;
 }
 
 export const handler = async (
-  event: { body: string | null },
+  event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-
-  // TODO: Validate body with schema of CreateProjectInput
+  const requestId = context.awsRequestId;
 
   try {
-    const usecase = await getCreateProjectUsecase();
-    await usecase.execute({
-      // TODO: Get authorization context from auth layer
-      authorizationContext: body.authorizationContext,
-      creationProperties: body.creationProperties
+    const user = await authenticateUser(event);
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
+    let body: CreateProjectBody;
+    if (!event.body) {
+      throw new ValidationApiError('Request body is required');
+    }
+
+    try {
+      body = JSON.parse(event.body);
+    } catch {
+      throw new ValidationApiError('Invalid JSON in request body');
+    }
+
+    const { name, description } = body;
+    if (!name) {
+      throw new ValidationApiError('Project name is required');
+    }
+
+    const authorizationContext: TaskManagementAuthorizationContext = {
+      tenantId: user.id as TenantId,
+      projectId: null,
+      role: user.role as UserRole
+    };
+
+    const creationProperties: ProjectCreationProperties = {
+      name,
+      description: description ?? null
+    };
+
+    await getCreateProjectUsecase().execute({
+      authorizationContext,
+      creationProperties
     });
 
     return {
@@ -52,14 +68,45 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    return buildErrorResponse(error, requestId);
+  }
+};
+
+function buildErrorResponse(
+  error: unknown,
+  requestId: string
+): APIGatewayProxyResult {
+  if (error instanceof UnauthorizedError) {
     return {
-      statusCode: 500,
+      statusCode: 401,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: errorMessage,
-        requestId: context.awsRequestId
+        error: error.message,
+        code: error.code,
+        requestId
       })
     };
   }
-};
+
+  if (error instanceof ValidationApiError) {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        error: error.message,
+        code: error.code,
+        requestId
+      })
+    };
+  }
+
+  return {
+    statusCode: 500,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+      code: 'INTERNAL_ERROR',
+      requestId
+    })
+  };
+}

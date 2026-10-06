@@ -1,1 +1,1 @@
-export * from './sqlite-database-client';
+export * from './sqlite-unit-of-work.adapter';

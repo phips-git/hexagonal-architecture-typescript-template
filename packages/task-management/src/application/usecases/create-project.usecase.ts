@@ -46,11 +46,10 @@ export class CreateProjectUsecase extends Usecase<
       creationProperties
     );
 
-    const { id: projectId } =
-      await this.projectPersistence.create(creationRecord);
+    await this.projectPersistence.create(creationRecord);
 
-    logger.info('Project created', { projectId });
+    logger.info('Project created', { projectId: creationRecord.id });
 
-    return { projectId };
+    return { projectId: creationRecord.id };
   }
 }

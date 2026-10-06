@@ -1,4 +1,7 @@
 {
   "extends": "@hexagonal-ts-template/typescript-config/base",
+  "compilerOptions": {
+    "experimentalDecorators": true
+  },
   "include": ["src", "./*.config.ts"]
 }

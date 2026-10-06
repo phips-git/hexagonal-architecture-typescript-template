@@ -11,8 +11,12 @@
     "test": "tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "better-sqlite3": "13.0.3"
+  },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",
-    "@hexagonal-ts-template/typescript-config": "*"
+    "@hexagonal-ts-template/typescript-config": "*",
+    "@types/better-sqlite3": "9.6.0"
   }
 }

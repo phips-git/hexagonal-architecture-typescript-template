@@ -1,50 +1,59 @@
-import {
-  createConsoleLogger,
-  SqliteDatabaseClient
-} from '@hexagonal-ts-template/common/infrastructure';
-import { DeleteProjectUsecase } from '@hexagonal-ts-template/task-management/application';
-import type { ProjectId } from '@hexagonal-ts-template/task-management/domain';
-import { SqliteProjectPersistencePort } from '@hexagonal-ts-template/task-management/infrastructure';
-import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-import { nanoid } from 'nanoid';
-
-let databaseClient: SqliteDatabaseClient | null = null;
-let deleteProjectUsecase: DeleteProjectUsecase | null = null;
-
-async function getDeleteProjectUsecase(): Promise<DeleteProjectUsecase> {
-  if (!deleteProjectUsecase) {
-    const client = databaseClient ?? (await SqliteDatabaseClient.create());
-    const db = client.getDatabase();
-
-    const usecaseExectionDependencies = {
-      generateId: <T>() => nanoid() as T,
-      loggerFactory: () => createConsoleLogger('DeleteProjectUsecase')
-    };
-    const projectPersistence = new SqliteProjectPersistencePort(db);
-
-    deleteProjectUsecase = new DeleteProjectUsecase(
-      usecaseExectionDependencies,
-      projectPersistence
-    );
-  }
-
-  return deleteProjectUsecase;
-}
+import type { UserRole } from '@hexagonal-ts-template/common/domain';
+import type {
+  ProjectId,
+  TaskManagementAuthorizationContext,
+  TenantId
+} from '@hexagonal-ts-template/task-management/domain';
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda';
+import { authenticateUser } from './shared/auth';
+import { getDeleteProjectUsecase } from './shared/usecase-factory';
 
 export const handler = async (
-  event: { body: string | null; pathParameters?: { id: string } },
+  event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-
-  // TODO: Validate body with schema of DeleteProjectInput
+  const requestId = context.awsRequestId;
 
   try {
-    const usecase = await getDeleteProjectUsecase();
-    await usecase.execute({
-      // TODO: Get authorization context from auth layer
-      authorizationContext: body.authorizationContext,
-      projectId: event.pathParameters?.id as ProjectId
+    const user = await authenticateUser(event);
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Unauthorized',
+          code: 'UNAUTHORIZED',
+          requestId
+        })
+      };
+    }
+
+    const projectId = event.pathParameters?.['id'];
+    if (!projectId) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Project ID is required',
+          code: 'VALIDATION_ERROR',
+          requestId
+        })
+      };
+    }
+
+    const authorizationContext: TaskManagementAuthorizationContext = {
+      tenantId: user.id as TenantId,
+      projectId: projectId as ProjectId,
+      role: user.role as UserRole
+    };
+
+    await getDeleteProjectUsecase().execute({
+      authorizationContext,
+      projectId: projectId as ProjectId
     });
 
     return {
@@ -53,13 +62,13 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: errorMessage,
-        requestId: context.awsRequestId
+        error: error instanceof Error ? error.message : String(error),
+        code: 'INTERNAL_ERROR',
+        requestId
       })
     };
   }

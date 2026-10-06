@@ -12,13 +12,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hexagonal-ts-template/auth": "*",
     "@hexagonal-ts-template/common": "*",
-    "drizzle-orm": "0.45.3",
-    "sqlite3": "6.0.1"
+    "better-sqlite3": "13.0.3",
+    "typeorm": "1.1.1"
   },
   "devDependencies": {
     "@hexagonal-ts-template/eslint-config": "*",
-    "@hexagonal-ts-template/typescript-config": "*",
-    "@types/sqlite3": "5.1.0"
+    "@hexagonal-ts-template/typescript-config": "*"
   }
 }

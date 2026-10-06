@@ -69,19 +69,17 @@ export class CreateTaskUsecase extends Usecase<
       creationProperties
     );
 
-    const taskId = await this.unitOfWork.withTransaction(async () => {
-      const { id: taskId } = await this.taskPersistence.create(creationRecord);
+    await this.unitOfWork.withTransaction(async (transaction) => {
+      await this.taskPersistence.create(creationRecord);
 
       await this.projectStatsPersistence.incrementTaskCount(
         projectId,
         new Date()
       );
-
-      return taskId;
     });
 
-    logger.info('Task created', { projectId, taskId });
+    logger.info('Task created', { taskId: creationRecord.id });
 
-    return { taskId };
+    return { taskId: creationRecord.id };
   }
 }

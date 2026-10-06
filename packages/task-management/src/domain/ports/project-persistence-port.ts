@@ -7,7 +7,7 @@ import type {
 } from '../models';
 
 export interface ProjectPersistencePort {
-  create(creationRecord: ProjectCreationRecord): Promise<Project>;
+  create(creationRecord: ProjectCreationRecord): Promise<void>;
 
   findReference(projectId: ProjectId): Promise<ProjectReference | null>;
 
@@ -16,7 +16,7 @@ export interface ProjectPersistencePort {
   update(
     projectId: ProjectId,
     updateRecord: ProjectUpdateRecord
-  ): Promise<Project>;
+  ): Promise<void>;
 
   remove(projectId: ProjectId): Promise<void>;
 }

@@ -1,52 +1,74 @@
-import {
-  createConsoleLogger,
-  SqliteDatabaseClient
-} from '@hexagonal-ts-template/common/infrastructure';
-import { UpdateProjectUsecase } from '@hexagonal-ts-template/task-management/application';
-import type { ProjectId } from '@hexagonal-ts-template/task-management/domain';
-import { SqliteProjectPersistencePort } from '@hexagonal-ts-template/task-management/infrastructure';
-import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-import { nanoid } from 'nanoid';
+import type { UserRole } from '@hexagonal-ts-template/common/domain';
+import type {
+  ProjectId,
+  ProjectUpdateProperties,
+  TaskManagementAuthorizationContext,
+  TenantId
+} from '@hexagonal-ts-template/task-management/domain';
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda';
+import { authenticateUser } from './shared/auth';
+import { UnauthorizedError, ValidationApiError } from './shared/errors';
+import { getUpdateProjectUsecase } from './shared/usecase-factory';
 
-let databaseClient: SqliteDatabaseClient | null = null;
-let updateProjectUsecase: UpdateProjectUsecase | null = null;
-
-async function getUpdateProjectUsecase(): Promise<UpdateProjectUsecase> {
-  if (!updateProjectUsecase) {
-    const client = databaseClient ?? (await SqliteDatabaseClient.create());
-    const db = client.getDatabase();
-
-    const usecaseExectionDependencies = {
-      generateId: <T>() => nanoid() as T,
-      loggerFactory: () => createConsoleLogger('UpdateProjectUsecase')
-    };
-    const projectPersistence = new SqliteProjectPersistencePort(db);
-
-    updateProjectUsecase = new UpdateProjectUsecase(
-      usecaseExectionDependencies,
-      projectPersistence
-    );
-  }
-
-  return updateProjectUsecase;
+interface UpdateProjectBody {
+  updateProperties: {
+    name?: string;
+    description?: string;
+  };
 }
 
 export const handler = async (
-  event: { body: string | null; pathParameters?: { id: string } },
+  event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-
-  // TODO: Validate body with schema of UpdateProjectInput
+  const requestId = context.awsRequestId;
 
   try {
-    const usecase = await getUpdateProjectUsecase();
+    const user = await authenticateUser(event);
+    if (!user) {
+      throw new UnauthorizedError();
+    }
 
-    await usecase.execute({
-      // TODO: Get authorization context from auth layer
-      authorizationContext: body.authorizationContext,
-      projectId: event.pathParameters?.id as ProjectId,
-      updateProperties: body.updateProperties
+    let body: UpdateProjectBody;
+    if (!event.body) {
+      throw new ValidationApiError('Request body is required');
+    }
+
+    try {
+      body = JSON.parse(event.body);
+    } catch {
+      throw new ValidationApiError('Invalid JSON in request body');
+    }
+
+    const { updateProperties } = body;
+    if (!updateProperties || Object.keys(updateProperties).length === 0) {
+      throw new ValidationApiError('At least one field to update is required');
+    }
+
+    const projectId = event.pathParameters?.['id'];
+    if (!projectId) {
+      throw new ValidationApiError('Project ID is required');
+    }
+
+    const authorizationContext: TaskManagementAuthorizationContext = {
+      tenantId: user.id as TenantId,
+      projectId: projectId as ProjectId,
+      role: user.role as UserRole
+    };
+
+    const updatePropertiesTyped = {
+      name: updateProperties.name,
+      description: updateProperties.description
+    };
+
+    await getUpdateProjectUsecase().execute({
+      authorizationContext,
+      projectId: projectId as ProjectId,
+      updateProperties: updatePropertiesTyped as ProjectUpdateProperties
     });
 
     return {
@@ -55,13 +77,13 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: errorMessage,
-        requestId: context.awsRequestId
+        error: error instanceof Error ? error.message : String(error),
+        code: 'INTERNAL_ERROR',
+        requestId
       })
     };
   }

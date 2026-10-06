@@ -1,24 +1,19 @@
-import type {
-  TransactionContext,
-  UnitOfWorkPort
-} from '@hexagonal-ts-template/common/application';
+import type { UnitOfWorkPort } from '@hexagonal-ts-template/common/application';
 
 export class InMemoryUnitOfWork implements UnitOfWorkPort<void> {
   private transactionActive = false;
-  private operations: Array<() => Promise<void>> = [];
+  private operations: Array<() => void> = [];
 
-  async withTransaction<T>(
-    work: (tx: TransactionContext<void>) => Promise<T>
-  ): Promise<T> {
+  withTransaction<T>(work: (transaction: void) => T): T {
     this.transactionActive = true;
     this.operations = [];
 
     try {
-      const result = await work(undefined);
+      const result = work();
 
       // Commit all operations
       for (const operation of this.operations) {
-        await operation();
+        operation();
       }
 
       return result;
@@ -31,7 +26,7 @@ export class InMemoryUnitOfWork implements UnitOfWorkPort<void> {
     }
   }
 
-  registerOperation(operation: () => Promise<void>): void {
+  registerOperation(operation: () => void): void {
     this.operations.push(operation);
   }
 

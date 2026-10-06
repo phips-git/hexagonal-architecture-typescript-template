@@ -32,10 +32,9 @@ export class DeleteProjectUsecase extends Usecase<DeleteProjectInput, void> {
   ): Promise<void> {
     ensureCanDeleteProject(authorizationContext);
 
-    ensureProjectReferenceExists(
-      await this.projectPersistence.findReference(projectId),
-      { projectId }
-    );
+    const projectReference =
+      await this.projectPersistence.findReference(projectId);
+    ensureProjectReferenceExists(projectReference, { projectId });
 
     await this.projectPersistence.remove(projectId);
 

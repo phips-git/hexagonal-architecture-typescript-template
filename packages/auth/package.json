@@ -1,0 +1,22 @@
+{
+  "name": "@hexagonal-ts-template/auth",
+  "private": true,
+  "exports": {
+    "./application": "./src/application.export.ts",
+    "./domain": "./src/domain.export.ts",
+    "./infrastructure": "./src/infrastructure.export.ts"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings 0 --fix",
+    "test": "tsx --test 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hexagonal-ts-template/common": "*",
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@hexagonal-ts-template/eslint-config": "*",
+    "@hexagonal-ts-template/typescript-config": "*"
+  }
+}

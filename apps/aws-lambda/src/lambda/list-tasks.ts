@@ -1,51 +1,59 @@
-import {
-  createConsoleLogger,
-  SqliteDatabaseClient
-} from '@hexagonal-ts-template/common/infrastructure';
-import { ListTasksUsecase } from '@hexagonal-ts-template/task-management/application';
-import type { ProjectId } from '@hexagonal-ts-template/task-management/domain';
-import { SqliteTaskPersistencePort } from '@hexagonal-ts-template/task-management/infrastructure';
-import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-import { nanoid } from 'nanoid';
-
-let databaseClient: SqliteDatabaseClient | null = null;
-let listTasksUsecase: ListTasksUsecase | null = null;
-
-async function getListTasksUsecase(): Promise<ListTasksUsecase> {
-  if (!listTasksUsecase) {
-    const client = databaseClient ?? (await SqliteDatabaseClient.create());
-    const db = client.getDatabase();
-
-    const usecaseExectionDependencies = {
-      generateId: <T>() => nanoid() as T,
-      loggerFactory: () => createConsoleLogger('ListTasksUsecase')
-    };
-    const taskPersistence = new SqliteTaskPersistencePort(db);
-
-    listTasksUsecase = new ListTasksUsecase(
-      usecaseExectionDependencies,
-      taskPersistence
-    );
-  }
-
-  return listTasksUsecase;
-}
+import type { UserRole } from '@hexagonal-ts-template/common/domain';
+import type {
+  ProjectId,
+  TaskManagementAuthorizationContext,
+  TenantId
+} from '@hexagonal-ts-template/task-management/domain';
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda';
+import { authenticateUser } from './shared/auth';
+import { getListTasksUsecase } from './shared/usecase-factory';
 
 export const handler = async (
-  event: { body: string | null; pathParameters?: { id: string } },
+  event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-
-  // TODO: Validate body with schema of ListTaskInput
+  const requestId = context.awsRequestId;
 
   try {
-    const usecase = await getListTasksUsecase();
+    const user = await authenticateUser(event);
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Unauthorized',
+          code: 'UNAUTHORIZED',
+          requestId
+        })
+      };
+    }
 
-    await usecase.execute({
-      // TODO: Get authorization context from auth layer
-      authorizationContext: body.authorizationContext,
-      projectId: event.pathParameters?.id as ProjectId
+    const projectId = event.pathParameters?.['id'];
+    if (!projectId) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Project ID is required',
+          code: 'VALIDATION_ERROR',
+          requestId
+        })
+      };
+    }
+
+    const authorizationContext: TaskManagementAuthorizationContext = {
+      tenantId: user.id as TenantId,
+      projectId: projectId as ProjectId,
+      role: user.role as UserRole
+    };
+
+    await getListTasksUsecase().execute({
+      authorizationContext,
+      projectId: projectId as ProjectId
     });
 
     return {
@@ -54,13 +62,13 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: errorMessage,
-        requestId: context.awsRequestId
+        error: error instanceof Error ? error.message : String(error),
+        code: 'INTERNAL_ERROR',
+        requestId
       })
     };
   }

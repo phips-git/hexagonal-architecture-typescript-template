@@ -14,7 +14,6 @@ export interface TaskReference {
 export interface Task extends TaskReference {
   readonly title: string;
   readonly description: string | null;
-  readonly status: TaskStatus;
   readonly priority: TaskPriority;
   readonly assignedTo: string | null;
   readonly dueDate: Date | null;
@@ -23,8 +22,6 @@ export interface Task extends TaskReference {
 }
 
 export interface TaskListItem extends TaskReference {
-  readonly projectId: ProjectId;
-  readonly status: TaskStatus;
   readonly priority: TaskPriority;
   readonly createdAt: Date;
 }

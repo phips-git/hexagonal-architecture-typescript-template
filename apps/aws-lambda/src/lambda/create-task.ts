@@ -1,62 +1,79 @@
-import {
-  createConsoleLogger,
-  SqliteDatabaseClient,
-  UnitOfWorkDatabaseAdapter
-} from '@hexagonal-ts-template/common/infrastructure';
-import { CreateTaskUsecase } from '@hexagonal-ts-template/task-management/application';
-import type { ProjectId } from '@hexagonal-ts-template/task-management/domain';
-import {
-  SqliteProjectPersistencePort,
-  SqliteProjectStatsPersistencePort,
-  SqliteTaskPersistencePort
-} from '@hexagonal-ts-template/task-management/infrastructure';
-import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-import { nanoid } from 'nanoid';
+import type { UserRole } from '@hexagonal-ts-template/common/domain';
+import type {
+  ProjectId,
+  TaskCreationProperties,
+  TaskManagementAuthorizationContext,
+  TaskPriority,
+  TenantId
+} from '@hexagonal-ts-template/task-management/domain';
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda';
+import { authenticateUser } from './shared/auth';
+import { UnauthorizedError, ValidationApiError } from './shared/errors';
+import { getCreateTaskUsecase } from './shared/usecase-factory';
 
-let databaseClient: SqliteDatabaseClient | null = null;
-let createTaskUsecase: CreateTaskUsecase | null = null;
-
-async function getCreateTaskUsecase(): Promise<CreateTaskUsecase> {
-  if (!createTaskUsecase) {
-    const client = databaseClient ?? (await SqliteDatabaseClient.create());
-    const db = client.getDatabase();
-
-    const usecaseExectionDependencies = {
-      generateId: <T>() => nanoid() as T,
-      loggerFactory: () => createConsoleLogger('CreateTaskUsecase')
-    };
-    const projectPersistence = new SqliteProjectPersistencePort(db);
-    const unitOfWork = new UnitOfWorkDatabaseAdapter(client);
-    const taskPersistence = new SqliteTaskPersistencePort(db);
-    const projectStatsPersistence = new SqliteProjectStatsPersistencePort(db);
-
-    createTaskUsecase = new CreateTaskUsecase(
-      usecaseExectionDependencies,
-      projectPersistence,
-      unitOfWork,
-      taskPersistence,
-      projectStatsPersistence
-    );
-  }
-
-  return createTaskUsecase;
+interface CreateTaskBody {
+  title: string;
+  description?: string;
+  priority?: number;
+  assignedTo?: string;
+  dueDate?: string;
 }
 
 export const handler = async (
-  event: { body: string | null; pathParameters?: { id: string } },
+  event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-
-  // TODO: Validate body with schema of CreateTaskInput
+  const requestId = context.awsRequestId;
 
   try {
-    const usecase = await getCreateTaskUsecase();
-    await usecase.execute({
-      // TODO: Get authorization context from auth layer
-      authorizationContext: body.authorizationContext,
-      projectId: event.pathParameters?.id as ProjectId,
-      creationProperties: body.creationProperties
+    const user = await authenticateUser(event);
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
+    let body: CreateTaskBody;
+    if (!event.body) {
+      throw new ValidationApiError('Request body is required');
+    }
+
+    try {
+      body = JSON.parse(event.body);
+    } catch {
+      throw new ValidationApiError('Invalid JSON in request body');
+    }
+
+    const { title, description, priority, assignedTo, dueDate } = body;
+    if (!title) {
+      throw new ValidationApiError('Task title is required');
+    }
+
+    const projectId = event.pathParameters?.['id'];
+    if (!projectId) {
+      throw new ValidationApiError('Project ID is required');
+    }
+
+    const authorizationContext: TaskManagementAuthorizationContext = {
+      tenantId: user.id as TenantId,
+      projectId: projectId as ProjectId,
+      role: user.role as UserRole
+    };
+
+    const creationProperties: TaskCreationProperties = {
+      title,
+      description: description ?? null,
+      priority: (priority ?? 0) as unknown as TaskPriority,
+      assignedTo: assignedTo ?? null,
+      dueDate: dueDate ? new Date(dueDate) : null
+    };
+
+    await getCreateTaskUsecase().execute({
+      authorizationContext,
+      projectId: projectId as ProjectId,
+      creationProperties
     });
 
     return {
@@ -65,13 +82,13 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: errorMessage,
-        requestId: context.awsRequestId
+        error: error instanceof Error ? error.message : String(error),
+        code: 'INTERNAL_ERROR',
+        requestId
       })
     };
   }

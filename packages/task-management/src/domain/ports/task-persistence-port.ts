@@ -9,7 +9,7 @@ import type {
 } from '../models';
 
 export interface TaskPersistencePort {
-  create(creationRecord: TaskCreationRecord): Promise<Task>;
+  create(creationRecord: TaskCreationRecord): Promise<void>;
 
   findReference(
     projectId: ProjectId,
@@ -24,7 +24,7 @@ export interface TaskPersistencePort {
     projectId: ProjectId,
     taskId: TaskId,
     updateRecord: TaskUpdateRecord
-  ): Promise<Task>;
+  ): Promise<void>;
 
   remove(projectId: ProjectId, taskId: TaskId): Promise<void>;
 }

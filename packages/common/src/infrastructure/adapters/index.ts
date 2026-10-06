@@ -1,5 +1,4 @@
-export * from './database-adapter-base';
-export * from './in-memory-unit-of-work';
+export * from './in-memory';
 export * from './logger.console.adapter';
 export * from './sqlite';
-export * from './unit-of-work.database.adapter';
+export * from './typeorm';

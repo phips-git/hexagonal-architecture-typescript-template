@@ -1,0 +1,4 @@
+{
+  "extends": "@hexagonal-ts-template/typescript-config/base",
+  "include": ["src", "./*.config.ts"]
+}

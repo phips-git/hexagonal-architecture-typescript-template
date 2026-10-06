@@ -1,66 +1,75 @@
-import {
-  createConsoleLogger,
-  SqliteDatabaseClient,
-  UnitOfWorkDatabaseAdapter
-} from '@hexagonal-ts-template/common/infrastructure';
-import { DeleteTaskUsecase } from '@hexagonal-ts-template/task-management/application';
+import type { UserRole } from '@hexagonal-ts-template/common/domain';
 import type {
   ProjectId,
-  TaskId
+  TaskId,
+  TaskManagementAuthorizationContext,
+  TenantId
 } from '@hexagonal-ts-template/task-management/domain';
-import {
-  SqliteProjectStatsPersistencePort,
-  SqliteTaskPersistencePort
-} from '@hexagonal-ts-template/task-management/infrastructure';
-import type { APIGatewayProxyResult, Context } from 'aws-lambda';
-import { nanoid } from 'nanoid';
-
-let databaseClient: SqliteDatabaseClient | null = null;
-let deleteTaskUsecase: DeleteTaskUsecase | null = null;
-
-async function getDeleteTaskUsecase(): Promise<DeleteTaskUsecase> {
-  if (!deleteTaskUsecase) {
-    const client = databaseClient ?? (await SqliteDatabaseClient.create());
-    const db = client.getDatabase();
-
-    const usecaseExectionDependencies = {
-      generateId: <T>() => nanoid() as T,
-      loggerFactory: () => createConsoleLogger('DeleteTaskUsecase')
-    };
-    const unitOfWork = new UnitOfWorkDatabaseAdapter(client);
-    const taskPersistence = new SqliteTaskPersistencePort(db);
-    const projectStatsPersistence = new SqliteProjectStatsPersistencePort(db);
-
-    deleteTaskUsecase = new DeleteTaskUsecase(
-      usecaseExectionDependencies,
-      taskPersistence,
-      unitOfWork,
-      projectStatsPersistence
-    );
-  }
-
-  return deleteTaskUsecase;
-}
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda';
+import { authenticateUser } from './shared/auth';
+import { getDeleteTaskUsecase } from './shared/usecase-factory';
 
 export const handler = async (
-  event: {
-    body: string | null;
-    pathParameters?: { projectId: string; taskId: string };
-  },
+  event: APIGatewayProxyEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
-  const body = event.body ? JSON.parse(event.body) : {};
-
-  // TODO: Validate body with schema of DeleteTaskInput
+  const requestId = context.awsRequestId;
 
   try {
-    const usecase = await getDeleteTaskUsecase();
+    const user = await authenticateUser(event);
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Unauthorized',
+          code: 'UNAUTHORIZED',
+          requestId
+        })
+      };
+    }
 
-    await usecase.execute({
-      // TODO: Get authorization context from auth layer
-      authorizationContext: body.authorizationContext,
-      projectId: event.pathParameters?.projectId as ProjectId,
-      taskId: event.pathParameters?.taskId as TaskId
+    const projectId = event.pathParameters?.['projectId'];
+    const taskId = event.pathParameters?.['taskId'];
+
+    if (!projectId) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Project ID is required',
+          code: 'VALIDATION_ERROR',
+          requestId
+        })
+      };
+    }
+
+    if (!taskId) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'Task ID is required',
+          code: 'VALIDATION_ERROR',
+          requestId
+        })
+      };
+    }
+
+    const authorizationContext: TaskManagementAuthorizationContext = {
+      tenantId: user.id as TenantId,
+      projectId: projectId as ProjectId,
+      role: user.role as UserRole
+    };
+
+    await getDeleteTaskUsecase().execute({
+      authorizationContext,
+      projectId: projectId as ProjectId,
+      taskId: taskId as TaskId
     });
 
     return {
@@ -69,13 +78,13 @@ export const handler = async (
       body: JSON.stringify({ success: true })
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: errorMessage,
-        requestId: context.awsRequestId
+        error: error instanceof Error ? error.message : String(error),
+        code: 'INTERNAL_ERROR',
+        requestId
       })
     };
   }

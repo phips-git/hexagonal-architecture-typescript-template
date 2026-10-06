@@ -44,15 +44,16 @@ export class DeleteTaskUsecase extends Usecase<DeleteTaskInput, void> {
     validateProjectId(projectId);
     validateTaskId(taskId);
 
-    ensureTaskReferenceExists(
-      await this.taskPersistence.findReference(projectId, taskId),
-      {
-        projectId,
-        taskId
-      }
+    const taskReference = await this.taskPersistence.findReference(
+      projectId,
+      taskId
     );
+    ensureTaskReferenceExists(taskReference, {
+      projectId,
+      taskId
+    });
 
-    await this.unitOfWork.withTransaction(async () => {
+    await this.unitOfWork.withTransaction(async (transaction) => {
       await this.taskPersistence.remove(projectId, taskId);
 
       await this.projectStatsPersistence.decrementTaskCount(
